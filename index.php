@@ -88,20 +88,25 @@ $sessionRows = db()->query(
     <canvas id="loadTimeChart" height="100"></canvas>
 
     <h2>Error Frequency by Page</h2>
-    <canvas id="errorChart" height="100"></canvas>
-
-    <h3>Error Rate by Page</h3>
-    <table border="1" cellpadding="6">
-        <tr><th>Page</th><th>Errors</th><th>Accesses</th><th>Error Rate</th></tr>
-        <?php foreach ($errorRateByPage as $row): ?>
-        <tr>
-            <td><?= htmlspecialchars($row['page']) ?></td>
-            <td><?= $row['errors'] ?></td>
-            <td><?= $row['accesses'] ?></td>
-            <td><?= $row['rate'] === null ? 'n/a' : $row['rate'] . '%' ?></td>
-        </tr>
-        <?php endforeach; ?>
-    </table>
+    <div style="display: flex; align-items: flex-start; gap: 2rem; flex-wrap: wrap;">
+        <div style="width: 25%; min-width: 220px;">
+            <canvas id="errorChart"></canvas>
+        </div>
+        <div>
+            <h3>Error Rate by Page</h3>
+            <table border="1" cellpadding="6">
+                <tr><th>Page</th><th>Errors</th><th>Accesses</th><th>Error Rate</th></tr>
+                <?php foreach ($errorRateByPage as $row): ?>
+                <tr>
+                    <td><?= htmlspecialchars($row['page']) ?></td>
+                    <td><?= $row['errors'] ?></td>
+                    <td><?= $row['accesses'] ?></td>
+                    <td><?= $row['rate'] === null ? 'n/a' : $row['rate'] . '%' ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </table>
+        </div>
+    </div>
 
     <h2>Sessions by Page</h2>
     <table border="1" cellpadding="6">
