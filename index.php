@@ -16,16 +16,21 @@ $loadTimeStats = db()->query(
      ORDER BY avg_load_time DESC"
 )->fetchAll(PDO::FETCH_ASSOC);
 
-// Pie chart: error count by page.
-$errorRows = db()->query(
+// Only these 4 pages are considered for error frequency / error rate.
+$trackedPages = ['/index.html', '/products.html', '/checkout.html', '/product-detail.html'];
+
+$errorCountRows = db()->query(
     "SELECT
        CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END AS page,
        COUNT(*) AS error_count
      FROM events
      WHERE type = 'error'
-     GROUP BY CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END
-     ORDER BY error_count DESC"
+     GROUP BY CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END"
 )->fetchAll(PDO::FETCH_ASSOC);
+$errorCountByPage = [];
+foreach ($errorCountRows as $row) {
+    $errorCountByPage[$row['page']] = (int) $row['error_count'];
+}
 
 // Error rate: errors as a percentage of page accesses (one 'static' event fires per page load).
 $accessRows = db()->query(
@@ -36,22 +41,30 @@ $accessRows = db()->query(
      WHERE type = 'static'
      GROUP BY CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END"
 )->fetchAll(PDO::FETCH_ASSOC);
-
 $accessCountByPage = [];
 foreach ($accessRows as $row) {
     $accessCountByPage[$row['page']] = (int) $row['access_count'];
 }
 
+// Pie chart: error count for each tracked page (including 0s).
+$errorRows = [];
 $errorRateByPage = [];
-foreach ($errorRows as $row) {
-    $page = $row['page'];
-    $errors = (int) $row['error_count'];
+foreach ($trackedPages as $page) {
+    $errors = $errorCountByPage[$page] ?? 0;
     $accesses = $accessCountByPage[$page] ?? 0;
+
+    $errorRows[] = ['page' => $page, 'error_count' => $errors];
+
+    if ($accesses > 0) {
+        $rate = round($errors / $accesses * 100, 1);
+    } else {
+        $rate = $errors === 0 ? 0.0 : null;
+    }
     $errorRateByPage[] = [
         'page' => $page,
         'errors' => $errors,
         'accesses' => $accesses,
-        'rate' => $accesses > 0 ? round($errors / $accesses * 100, 1) : null,
+        'rate' => $rate,
     ];
 }
 
