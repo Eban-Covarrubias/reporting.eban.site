@@ -3,31 +3,18 @@ require_once __DIR__ . '/lib/auth.php';
 requireLogin();
 $user = currentUser();
 
-// Line chart: load time per page-load event, one series per page, over time.
-$loadTimeRows = db()->query(
+// Bar chart: average page load time per page, with standard deviation.
+$loadTimeStats = db()->query(
     "SELECT
        CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END AS page,
-       created_at,
-       JSON_UNQUOTE(JSON_EXTRACT(data, '$.loadTimeMs')) AS load_time_ms
+       AVG(CAST(JSON_UNQUOTE(JSON_EXTRACT(data, '$.loadTimeMs')) AS DECIMAL(10,2))) AS avg_load_time,
+       STDDEV(CAST(JSON_UNQUOTE(JSON_EXTRACT(data, '$.loadTimeMs')) AS DECIMAL(10,2))) AS stddev_load_time,
+       COUNT(*) AS n
      FROM events
      WHERE type = 'performance'
-     ORDER BY created_at ASC"
+     GROUP BY CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END
+     ORDER BY avg_load_time DESC"
 )->fetchAll(PDO::FETCH_ASSOC);
-
-$loadTimeByPage = [];
-foreach ($loadTimeRows as $row) {
-    if ($row['load_time_ms'] === null) {
-        continue;
-    }
-    $page = $row['page'];
-    if (!isset($loadTimeByPage[$page])) {
-        $loadTimeByPage[$page] = [];
-    }
-    $loadTimeByPage[$page][] = [
-        'x' => strtotime($row['created_at']) * 1000,
-        'y' => (float) $row['load_time_ms'],
-    ];
-}
 
 // Bar chart: error count by page.
 $errorRows = db()->query(
@@ -57,6 +44,7 @@ $sessionRows = db()->query(
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-error-bars@4"></script>
 </head>
 <body>
     <h1>reporting.eban.site</h1>
@@ -68,7 +56,7 @@ $sessionRows = db()->query(
         <?php endif; ?>
     </p>
 
-    <h2>Page Load Time Over Time (by page)</h2>
+    <h2>Average Page Load Time by Page (&plusmn; 1 std dev)</h2>
     <canvas id="loadTimeChart" height="100"></canvas>
 
     <h2>Error Frequency by Page</h2>
@@ -86,7 +74,7 @@ $sessionRows = db()->query(
     </table>
 
     <script>
-        const loadTimeByPage = <?= json_encode($loadTimeByPage) ?>;
+        const loadTimeStats = <?= json_encode($loadTimeStats) ?>;
         const errorRows = <?= json_encode($errorRows) ?>;
 
         const palette = ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc948', '#b07aa1'];
@@ -100,36 +88,29 @@ $sessionRows = db()->query(
             return colorForPage[page];
         }
 
-        const loadTimeDatasets = Object.keys(loadTimeByPage).map(function (page) {
-            const color = pageColor(page);
-            return {
-                label: page,
-                data: loadTimeByPage[page],
-                borderColor: color,
-                backgroundColor: color,
-                tension: 0.2,
-                pointRadius: 3,
-            };
-        });
-
         new Chart(document.getElementById('loadTimeChart'), {
-            type: 'line',
-            data: { datasets: loadTimeDatasets },
+            type: 'barWithErrorBars',
+            data: {
+                labels: loadTimeStats.map(function (r) { return r.page; }),
+                datasets: [{
+                    label: 'Avg load time (ms)',
+                    data: loadTimeStats.map(function (r) {
+                        const avg = Number(r.avg_load_time);
+                        const stddev = Number(r.stddev_load_time) || 0;
+                        return {
+                            y: avg,
+                            yMin: Math.max(0, avg - stddev),
+                            yMax: avg + stddev
+                        };
+                    }),
+                    backgroundColor: loadTimeStats.map(function (r) { return pageColor(r.page); })
+                }]
+            },
             options: {
-                parsing: false,
                 scales: {
-                    x: {
-                        type: 'linear',
-                        title: { display: true, text: 'Time' },
-                        ticks: {
-                            callback: function (value) {
-                                return new Date(value).toLocaleString();
-                            }
-                        }
-                    },
                     y: {
-                        title: { display: true, text: 'Load time (ms)' },
-                        beginAtZero: true
+                        beginAtZero: true,
+                        title: { display: true, text: 'Load time (ms)' }
                     }
                 }
             }
