@@ -125,7 +125,8 @@ $timeOnPageStats = $timeOnPageStmt->fetchAll(PDO::FETCH_ASSOC);
     <h1>reporting.eban.site</h1>
     <p>Logged in as <?= htmlspecialchars($user['username']) ?> (<?= $user['is_admin'] ? 'admin' : 'basic' ?>)</p>
     <p>
-        <a href="/logout.php">Logout</a>
+        <a href="/load-time-report.php">Generate Report</a>
+        | <a href="/logout.php">Logout</a>
         <?php if ($user['is_admin']): ?>
             | <a href="/users.php">User Management</a>
         <?php endif; ?>
