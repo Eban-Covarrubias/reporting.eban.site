@@ -32,6 +32,10 @@ $phaseStats = db()->query(
      GROUP BY page
      ORDER BY page"
 )->fetchAll(PDO::FETCH_ASSOC);
+
+if (isset($_GET['download'])) {
+    header('Content-Disposition: attachment; filename="load-time-report.html"');
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -47,6 +51,7 @@ $phaseStats = db()->query(
         <h1>Detailed Report: Where Does Page Load Time Go?</h1>
         <nav>
             <a href="/index.php">Back to dashboard</a>
+            <a href="/load-time-report.php?download=1">Download Report</a>
             <a href="/logout.php">Logout</a>
         </nav>
     </header>
