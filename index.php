@@ -46,14 +46,11 @@ foreach ($accessRows as $row) {
     $accessCountByPage[$row['page']] = (int) $row['access_count'];
 }
 
-// Pie chart: error count for each tracked page (including 0s).
-$errorRows = [];
+// Table: error count / rate for each tracked page (including 0s).
 $errorRateByPage = [];
 foreach ($trackedPages as $page) {
     $errors = $errorCountByPage[$page] ?? 0;
     $accesses = $accessCountByPage[$page] ?? 0;
-
-    $errorRows[] = ['page' => $page, 'error_count' => $errors];
 
     if ($accesses > 0) {
         $rate = round($errors / $accesses * 100, 1);
@@ -68,15 +65,52 @@ foreach ($trackedPages as $page) {
     ];
 }
 
-// Grid: distinct session count by page.
-$sessionRows = db()->query(
-    "SELECT
-       CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END AS page,
-       COUNT(DISTINCT session_id) AS session_count
-     FROM events
-     GROUP BY CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END
-     ORDER BY session_count DESC"
-)->fetchAll(PDO::FETCH_ASSOC);
+// Pie chart: active time spent per page, summed across visits.
+// - Paired via page_enter/page_leave (matched in order per session+page).
+// - Idle gaps (2s+ of no activity, per collector.js) are subtracted so a
+//   backgrounded/forgotten tab doesn't count as "engaged" time.
+// - Each individual visit is also capped at 10 minutes as a backstop, in case
+//   a visit ends during an idle gap that never got logged (e.g. tab closed
+//   before any activity resumed to trigger the idle write).
+$VISIT_CAP_MS = 10 * 60 * 1000;
+$timeOnPageStmt = db()->prepare(
+    "WITH ordered_events AS (
+        SELECT
+            session_id,
+            CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END AS page,
+            type, client_timestamp,
+            ROW_NUMBER() OVER (PARTITION BY session_id, page, type ORDER BY client_timestamp) AS rn
+        FROM events
+        WHERE type IN ('page_enter', 'page_leave')
+          AND page IN ('/', '/index.html', 'index', '/products.html', '/checkout.html', '/product-detail.html')
+     ),
+     paired AS (
+        SELECT e.session_id, e.page, e.client_timestamp AS enter_ts, l.client_timestamp AS leave_ts
+        FROM ordered_events e
+        JOIN ordered_events l ON e.session_id = l.session_id AND e.page = l.page AND e.rn = l.rn
+            AND e.type = 'page_enter' AND l.type = 'page_leave'
+        WHERE l.client_timestamp > e.client_timestamp
+     ),
+     idle_per_visit AS (
+        SELECT p.session_id, p.page, p.enter_ts, p.leave_ts,
+               COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(ev.data, '$.durationMs')) AS UNSIGNED)), 0) AS idle_ms
+        FROM paired p
+        LEFT JOIN events ev
+            ON ev.session_id = p.session_id
+           AND CASE WHEN ev.page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE ev.page END = p.page
+           AND ev.type = 'idle'
+           AND ev.client_timestamp BETWEEN p.enter_ts AND p.leave_ts
+        GROUP BY p.session_id, p.page, p.enter_ts, p.leave_ts
+     )
+     SELECT page,
+            SUM(LEAST(GREATEST(leave_ts - enter_ts - idle_ms, 0), :cap)) AS active_ms
+     FROM idle_per_visit
+     GROUP BY page
+     ORDER BY active_ms DESC"
+);
+$timeOnPageStmt->bindValue(':cap', $VISIT_CAP_MS, PDO::PARAM_INT);
+$timeOnPageStmt->execute();
+$timeOnPageStats = $timeOnPageStmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -100,41 +134,27 @@ $sessionRows = db()->query(
     <h2>Average Page Load Time by Page (&plusmn; 1 std dev)</h2>
     <canvas id="loadTimeChart" height="100"></canvas>
 
-    <h2>Error Frequency by Page</h2>
-    <div style="display: flex; align-items: flex-start; gap: 2rem; flex-wrap: wrap;">
-        <div style="width: 25%; min-width: 220px;">
-            <canvas id="errorChart"></canvas>
-        </div>
-        <div>
-            <h3>Error Rate by Page</h3>
-            <table border="1" cellpadding="6">
-                <tr><th>Page</th><th>Errors</th><th>Accesses</th><th>Error Rate</th></tr>
-                <?php foreach ($errorRateByPage as $row): ?>
-                <tr>
-                    <td><?= htmlspecialchars($row['page']) ?></td>
-                    <td><?= $row['errors'] ?></td>
-                    <td><?= $row['accesses'] ?></td>
-                    <td><?= $row['rate'] === null ? 'n/a' : $row['rate'] . '%' ?></td>
-                </tr>
-                <?php endforeach; ?>
-            </table>
-        </div>
-    </div>
-
-    <h2>Sessions by Page</h2>
+    <h2>Error Rate by Page</h2>
     <table border="1" cellpadding="6">
-        <tr><th>Page</th><th>Session Count</th></tr>
-        <?php foreach ($sessionRows as $row): ?>
+        <tr><th>Page</th><th>Errors</th><th>Accesses</th><th>Error Rate</th></tr>
+        <?php foreach ($errorRateByPage as $row): ?>
         <tr>
             <td><?= htmlspecialchars($row['page']) ?></td>
-            <td><?= (int) $row['session_count'] ?></td>
+            <td><?= $row['errors'] ?></td>
+            <td><?= $row['accesses'] ?></td>
+            <td><?= $row['rate'] === null ? 'n/a' : $row['rate'] . '%' ?></td>
         </tr>
         <?php endforeach; ?>
     </table>
 
+    <h2>Time Spent on Page (active time, idle gaps excluded)</h2>
+    <div style="width: 25%; min-width: 220px;">
+        <canvas id="timeOnPageChart"></canvas>
+    </div>
+
     <script>
         const loadTimeStats = <?= json_encode($loadTimeStats) ?>;
-        const errorRows = <?= json_encode($errorRows) ?>;
+        const timeOnPageStats = <?= json_encode($timeOnPageStats) ?>;
 
         const palette = ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc948', '#b07aa1'];
         let colorIndex = 0;
@@ -178,15 +198,29 @@ $sessionRows = db()->query(
             }
         });
 
-        new Chart(document.getElementById('errorChart'), {
+        new Chart(document.getElementById('timeOnPageChart'), {
             type: 'pie',
             data: {
-                labels: errorRows.map(function (r) { return r.page; }),
+                labels: timeOnPageStats.map(function (r) { return r.page; }),
                 datasets: [{
-                    label: 'Errors',
-                    data: errorRows.map(function (r) { return r.error_count; }),
-                    backgroundColor: errorRows.map(function (r) { return pageColor(r.page); })
+                    label: 'Active time (ms)',
+                    data: timeOnPageStats.map(function (r) { return Number(r.active_ms); }),
+                    backgroundColor: timeOnPageStats.map(function (r) { return pageColor(r.page); })
                 }]
+            },
+            options: {
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function (ctx) {
+                                const totalSeconds = Math.round(ctx.parsed / 1000);
+                                const minutes = Math.floor(totalSeconds / 60);
+                                const seconds = totalSeconds % 60;
+                                return ctx.label + ': ' + minutes + 'm ' + seconds + 's';
+                            }
+                        }
+                    }
+                }
             }
         });
     </script>
