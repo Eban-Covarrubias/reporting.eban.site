@@ -226,10 +226,9 @@ $timeOnPageStats = $timeOnPageStmt->fetchAll(PDO::FETCH_ASSOC);
                     tooltip: {
                         callbacks: {
                             label: function (ctx) {
-                                const totalSeconds = Math.round(ctx.parsed / 1000);
-                                const minutes = Math.floor(totalSeconds / 60);
-                                const seconds = totalSeconds % 60;
-                                return ctx.label + ': ' + minutes + 'm ' + seconds + 's';
+                                const total = ctx.dataset.data.reduce(function (sum, v) { return sum + v; }, 0);
+                                const pct = total > 0 ? (ctx.parsed / total * 100) : 0;
+                                return pct.toFixed(1) + '%';
                             }
                         }
                     }
