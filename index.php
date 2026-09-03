@@ -180,6 +180,17 @@ $timeOnPageStats = $timeOnPageStmt->fetchAll(PDO::FETCH_ASSOC);
             return colorForPage[page];
         }
 
+        function lightenColor(hex, factor) {
+            const c = hex.replace('#', '');
+            const r = parseInt(c.substring(0, 2), 16);
+            const g = parseInt(c.substring(2, 4), 16);
+            const b = parseInt(c.substring(4, 6), 16);
+            const lr = Math.round(r + (255 - r) * factor);
+            const lg = Math.round(g + (255 - g) * factor);
+            const lb = Math.round(b + (255 - b) * factor);
+            return 'rgb(' + lr + ', ' + lg + ', ' + lb + ')';
+        }
+
         new Chart(document.getElementById('loadTimeChart'), {
             type: 'barWithErrorBars',
             data: {
@@ -195,7 +206,9 @@ $timeOnPageStats = $timeOnPageStmt->fetchAll(PDO::FETCH_ASSOC);
                             yMax: avg + stddev
                         };
                     }),
-                    backgroundColor: loadTimeStats.map(function (r) { return pageColor(r.page); })
+                    backgroundColor: loadTimeStats.map(function (r) { return pageColor(r.page); }),
+                    errorBarColor: loadTimeStats.map(function (r) { return lightenColor(pageColor(r.page), 0.5); }),
+                    errorBarWhiskerColor: loadTimeStats.map(function (r) { return lightenColor(pageColor(r.page), 0.5); })
                 }]
             },
             options: {
