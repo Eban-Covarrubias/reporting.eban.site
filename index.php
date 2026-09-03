@@ -127,7 +127,6 @@ $timeOnPageStats = $timeOnPageStmt->fetchAll(PDO::FETCH_ASSOC);
         <h1>reporting.eban.site</h1>
         <p>Logged in as <?= htmlspecialchars($user['username']) ?> (<?= $user['is_admin'] ? 'admin' : 'basic' ?>)</p>
         <nav>
-            <a href="/load-time-report.php">Generate Report</a>
             <a href="/logout.php">Logout</a>
             <?php if ($user['is_admin']): ?>
                 <a href="/users.php">User Management</a>
@@ -136,14 +135,20 @@ $timeOnPageStats = $timeOnPageStmt->fetchAll(PDO::FETCH_ASSOC);
     </header>
     <main>
         <section>
-            <h2>Average Page Load Time by Page (&plusmn; 1 std dev)</h2>
+            <div class="section-header">
+                <h2>Average Page Load Time by Page (&plusmn; 1 std dev)</h2>
+                <a href="/load-time-report.php">Generate Report &rarr;</a>
+            </div>
             <div class="chart-card">
                 <canvas id="loadTimeChart" height="100"></canvas>
             </div>
         </section>
 
         <section>
-            <h2>Error Rate by Page</h2>
+            <div class="section-header">
+                <h2>Error Rate by Page</h2>
+                <a href="/error-report.php">Generate Report &rarr;</a>
+            </div>
             <table>
                 <tr><th>Page</th><th>Errors</th><th>Accesses</th><th>Error Rate</th></tr>
                 <?php foreach ($errorRateByPage as $row): ?>
@@ -158,7 +163,10 @@ $timeOnPageStats = $timeOnPageStmt->fetchAll(PDO::FETCH_ASSOC);
         </section>
 
         <section>
-            <h2>Time Spent on Page (active time, idle gaps excluded)</h2>
+            <div class="section-header">
+                <h2>Time Spent on Page (active time, idle gaps excluded)</h2>
+                <a href="/engagement-report.php">Generate Report &rarr;</a>
+            </div>
             <div class="chart-card small">
                 <canvas id="timeOnPageChart"></canvas>
             </div>
