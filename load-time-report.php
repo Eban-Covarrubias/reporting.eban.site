@@ -33,7 +33,8 @@ $phaseStats = db()->query(
      ORDER BY page"
 )->fetchAll(PDO::FETCH_ASSOC);
 
-if (isset($_GET['download'])) {
+$isDownload = isset($_GET['download']);
+if ($isDownload) {
     header('Content-Disposition: attachment; filename="load-time-report.html"');
 }
 ?>
@@ -49,11 +50,13 @@ if (isset($_GET['download'])) {
 <body>
     <header>
         <h1>Detailed Report: Where Does Page Load Time Go?</h1>
+        <?php if (!$isDownload): ?>
         <nav>
             <a href="/index.php">Back to dashboard</a>
             <a href="/load-time-report.php?download=1">Download Report</a>
             <a href="/logout.php">Logout</a>
         </nav>
+        <?php endif; ?>
     </header>
     <main>
     <p>
