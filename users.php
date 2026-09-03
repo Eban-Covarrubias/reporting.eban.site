@@ -95,50 +95,55 @@ $users = db()->query('SELECT id, username, email, password_hash, is_admin FROM u
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Management</title>
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <h1>User Management</h1>
-    <p><a href="/index.php">Back to dashboard</a> | <a href="/logout.php">Logout</a></p>
-
-    <?php if ($error): ?>
-        <p style="color:red;"><?= htmlspecialchars($error) ?></p>
-    <?php endif; ?>
-
-    <h2><?= $editUser ? 'Edit User' : 'Add User' ?></h2>
-    <form method="POST" action="/users.php">
-        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
-        <input type="hidden" name="action" value="<?= $editUser ? 'update' : 'create' ?>">
-        <?php if ($editUser): ?>
-            <input type="hidden" name="id" value="<?= (int) $editUser['id'] ?>">
+    <header>
+        <h1>User Management</h1>
+        <nav>
+            <a href="/index.php">Back to dashboard</a>
+            <a href="/logout.php">Logout</a>
+        </nav>
+    </header>
+    <main>
+        <?php if ($error): ?>
+            <p class="error"><?= htmlspecialchars($error) ?></p>
         <?php endif; ?>
-        <label>
-            Username
-            <input type="text" name="username" required value="<?= htmlspecialchars($editUser['username'] ?? '') ?>">
-        </label>
-        <br>
-        <label>
-            Email
-            <input type="email" name="email" required value="<?= htmlspecialchars($editUser['email'] ?? '') ?>">
-        </label>
-        <br>
-        <label>
-            Password<?= $editUser ? ' (leave blank to keep current password)' : '' ?>
-            <input type="password" name="password" <?= $editUser ? '' : 'required' ?>>
-        </label>
-        <br>
-        <label>
-            <input type="checkbox" name="is_admin" <?= !empty($editUser['is_admin']) ? 'checked' : '' ?>>
-            Admin
-        </label>
-        <br>
-        <button type="submit"><?= $editUser ? 'Save Changes' : 'Add User' ?></button>
-        <?php if ($editUser): ?>
-            <a href="/users.php">Cancel</a>
-        <?php endif; ?>
-    </form>
 
-    <h2>All Users</h2>
-    <table border="1" cellpadding="6">
+        <section>
+            <h2><?= $editUser ? 'Edit User' : 'Add User' ?></h2>
+            <form method="POST" action="/users.php">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+                <input type="hidden" name="action" value="<?= $editUser ? 'update' : 'create' ?>">
+                <?php if ($editUser): ?>
+                    <input type="hidden" name="id" value="<?= (int) $editUser['id'] ?>">
+                <?php endif; ?>
+                <label>
+                    Username
+                    <input type="text" name="username" required value="<?= htmlspecialchars($editUser['username'] ?? '') ?>">
+                </label>
+                <label>
+                    Email
+                    <input type="email" name="email" required value="<?= htmlspecialchars($editUser['email'] ?? '') ?>">
+                </label>
+                <label>
+                    Password<?= $editUser ? ' (leave blank to keep current password)' : '' ?>
+                    <input type="password" name="password" <?= $editUser ? '' : 'required' ?>>
+                </label>
+                <label>
+                    <input type="checkbox" name="is_admin" <?= !empty($editUser['is_admin']) ? 'checked' : '' ?>>
+                    Admin
+                </label>
+                <button type="submit"><?= $editUser ? 'Save Changes' : 'Add User' ?></button>
+                <?php if ($editUser): ?>
+                    <a href="/users.php">Cancel</a>
+                <?php endif; ?>
+            </form>
+        </section>
+
+        <section>
+        <h2>All Users</h2>
+        <table>
         <tr>
             <th>ID</th>
             <th>Username</th>
@@ -156,7 +161,7 @@ $users = db()->query('SELECT id, username, email, password_hash, is_admin FROM u
             <td><?= $u['is_admin'] ? 'Yes' : 'No' ?></td>
             <td>
                 <a href="/users.php?edit=<?= (int) $u['id'] ?>">Edit</a>
-                <form method="POST" action="/users.php" style="display:inline;" onsubmit="return confirm('Delete user &quot;<?= htmlspecialchars($u['username'], ENT_QUOTES) ?>&quot;? This cannot be undone.');">
+                <form class="inline" method="POST" action="/users.php" onsubmit="return confirm('Delete user &quot;<?= htmlspecialchars($u['username'], ENT_QUOTES) ?>&quot;? This cannot be undone.');">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                     <input type="hidden" name="action" value="delete">
                     <input type="hidden" name="id" value="<?= (int) $u['id'] ?>">
@@ -165,6 +170,8 @@ $users = db()->query('SELECT id, username, email, password_hash, is_admin FROM u
             </td>
         </tr>
         <?php endforeach; ?>
-    </table>
+        </table>
+        </section>
+    </main>
 </body>
 </html>

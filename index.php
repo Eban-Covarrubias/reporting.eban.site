@@ -118,40 +118,52 @@ $timeOnPageStats = $timeOnPageStmt->fetchAll(PDO::FETCH_ASSOC);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-error-bars@4"></script>
 </head>
 <body>
-    <h1>reporting.eban.site</h1>
-    <p>Logged in as <?= htmlspecialchars($user['username']) ?> (<?= $user['is_admin'] ? 'admin' : 'basic' ?>)</p>
-    <p>
-        <a href="/load-time-report.php">Generate Report</a>
-        | <a href="/logout.php">Logout</a>
-        <?php if ($user['is_admin']): ?>
-            | <a href="/users.php">User Management</a>
-        <?php endif; ?>
-    </p>
+    <header>
+        <h1>reporting.eban.site</h1>
+        <p>Logged in as <?= htmlspecialchars($user['username']) ?> (<?= $user['is_admin'] ? 'admin' : 'basic' ?>)</p>
+        <nav>
+            <a href="/load-time-report.php">Generate Report</a>
+            <a href="/logout.php">Logout</a>
+            <?php if ($user['is_admin']): ?>
+                <a href="/users.php">User Management</a>
+            <?php endif; ?>
+        </nav>
+    </header>
+    <main>
+        <section>
+            <h2>Average Page Load Time by Page (&plusmn; 1 std dev)</h2>
+            <div class="chart-card">
+                <canvas id="loadTimeChart" height="100"></canvas>
+            </div>
+        </section>
 
-    <h2>Average Page Load Time by Page (&plusmn; 1 std dev)</h2>
-    <canvas id="loadTimeChart" height="100"></canvas>
+        <section>
+            <h2>Error Rate by Page</h2>
+            <table>
+                <tr><th>Page</th><th>Errors</th><th>Accesses</th><th>Error Rate</th></tr>
+                <?php foreach ($errorRateByPage as $row): ?>
+                <tr>
+                    <td><?= htmlspecialchars($row['page']) ?></td>
+                    <td><?= $row['errors'] ?></td>
+                    <td><?= $row['accesses'] ?></td>
+                    <td><?= $row['rate'] === null ? 'n/a' : $row['rate'] . '%' ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </table>
+        </section>
 
-    <h2>Error Rate by Page</h2>
-    <table border="1" cellpadding="6">
-        <tr><th>Page</th><th>Errors</th><th>Accesses</th><th>Error Rate</th></tr>
-        <?php foreach ($errorRateByPage as $row): ?>
-        <tr>
-            <td><?= htmlspecialchars($row['page']) ?></td>
-            <td><?= $row['errors'] ?></td>
-            <td><?= $row['accesses'] ?></td>
-            <td><?= $row['rate'] === null ? 'n/a' : $row['rate'] . '%' ?></td>
-        </tr>
-        <?php endforeach; ?>
-    </table>
-
-    <h2>Time Spent on Page (active time, idle gaps excluded)</h2>
-    <div style="width: 25%; min-width: 220px;">
-        <canvas id="timeOnPageChart"></canvas>
-    </div>
+        <section>
+            <h2>Time Spent on Page (active time, idle gaps excluded)</h2>
+            <div class="chart-card small">
+                <canvas id="timeOnPageChart"></canvas>
+            </div>
+        </section>
+    </main>
 
     <script>
         const loadTimeStats = <?= json_encode($loadTimeStats) ?>;

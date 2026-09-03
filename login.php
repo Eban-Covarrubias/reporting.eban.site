@@ -37,24 +37,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <h1>Login</h1>
-    <?php if ($error): ?>
-        <p style="color:red;"><?= htmlspecialchars($error) ?></p>
-    <?php endif; ?>
-    <form method="POST" action="/login.php">
-        <label>
-            Username or Email
-            <input type="text" name="identifier" required>
-        </label>
-        <br>
-        <label>
-            Password
-            <input type="password" name="password" required>
-        </label>
-        <br>
-        <button type="submit">Log in</button>
-    </form>
+    <header>
+        <h1>reporting.eban.site</h1>
+        <p>Sign in to view your dashboard</p>
+    </header>
+    <main>
+        <?php if ($error): ?>
+            <p class="error"><?= htmlspecialchars($error) ?></p>
+        <?php endif; ?>
+        <form method="POST" action="/login.php">
+            <label>
+                Username or Email
+                <input type="text" name="identifier" required>
+            </label>
+            <label>
+                Password
+                <input type="password" name="password" required>
+            </label>
+            <button type="submit">Log in</button>
+        </form>
+    </main>
 </body>
 </html>

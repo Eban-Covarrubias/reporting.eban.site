@@ -39,14 +39,18 @@ $phaseStats = db()->query(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Load Time Report</title>
+    <link rel="stylesheet" href="/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 </head>
 <body>
-    <h1>Detailed Report: Where Does Page Load Time Go?</h1>
-    <p>
-        <a href="/index.php">Back to dashboard</a> | <a href="/logout.php">Logout</a>
-    </p>
-
+    <header>
+        <h1>Detailed Report: Where Does Page Load Time Go?</h1>
+        <nav>
+            <a href="/index.php">Back to dashboard</a>
+            <a href="/logout.php">Logout</a>
+        </nav>
+    </header>
+    <main>
     <p>
         <strong>Guiding question:</strong> For each page, is load time dominated by network/server
         delay (DNS lookup, TCP/TLS connect, waiting on the server) or by browser-side rendering
@@ -54,8 +58,9 @@ $phaseStats = db()->query(
         effort actually go?
     </p>
 
+    <section>
     <h2>Average Time per Load Phase, by Page (ms)</h2>
-    <table border="1" cellpadding="6">
+    <table>
         <tr>
             <th>Page</th>
             <th>DNS Lookup</th>
@@ -79,10 +84,16 @@ $phaseStats = db()->query(
         </tr>
         <?php endforeach; ?>
     </table>
+    </section>
 
+    <section>
     <h2>Load Time Composition by Page</h2>
-    <canvas id="phaseChart" height="100"></canvas>
+    <div class="chart-card">
+        <canvas id="phaseChart" height="100"></canvas>
+    </div>
+    </section>
 
+    <section>
     <h2>What This Tells Us</h2>
     <p>
         Across every tracked page, <strong>DOM processing is by far the largest phase</strong> of
@@ -105,6 +116,8 @@ $phaseStats = db()->query(
         page construction (e.g. the site's own inline/loaded scripts), rather than server response
         time or connection setup &mdash; those are already fast and fairly consistent across pages.
     </p>
+    </section>
+    </main>
 
     <script>
         const phaseStats = <?= json_encode($phaseStats) ?>;
