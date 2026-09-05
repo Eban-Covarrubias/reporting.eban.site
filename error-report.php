@@ -2,6 +2,7 @@
 require_once __DIR__ . '/lib/auth.php';
 requireSection('errors');
 $user = currentUser();
+$csrfToken = ensureCsrfToken();
 
 // Break errors down by the exact message/line, not just page-level counts,
 // so we can see whether a page has one persistent bug or many different ones.
@@ -41,9 +42,17 @@ if ($isDownload) {
         <?php if (!$isDownload): ?>
         <nav>
             <a href="/index.php">Back to dashboard</a>
+            <a href="/reports.php">Saved Reports</a>
             <a href="/error-report.php?download=1">Download Report</a>
             <a href="/logout.php">Logout</a>
         </nav>
+        <form method="POST" action="/save-report.php" class="row" style="align-items: center; margin-top: 1rem;">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+            <input type="hidden" name="section" value="errors">
+            <input type="hidden" name="snapshot" value='<?= htmlspecialchars(json_encode($errorDetails), ENT_QUOTES) ?>'>
+            <input type="text" name="title" placeholder="Report title" required style="max-width: 260px;">
+            <button type="submit">Save as Report</button>
+        </form>
         <?php endif; ?>
     </header>
     <main>

@@ -2,6 +2,7 @@
 require_once __DIR__ . '/lib/auth.php';
 requireSection('engagement');
 $user = currentUser();
+$csrfToken = ensureCsrfToken();
 
 // Bucket each paired page_enter/page_leave visit by how much *active* time
 // (idle gaps excluded) it involved, and separately track what fraction of
@@ -74,9 +75,17 @@ if ($isDownload) {
         <?php if (!$isDownload): ?>
         <nav>
             <a href="/index.php">Back to dashboard</a>
+            <a href="/reports.php">Saved Reports</a>
             <a href="/engagement-report.php?download=1">Download Report</a>
             <a href="/logout.php">Logout</a>
         </nav>
+        <form method="POST" action="/save-report.php" class="row" style="align-items: center; margin-top: 1rem;">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+            <input type="hidden" name="section" value="engagement">
+            <input type="hidden" name="snapshot" value='<?= htmlspecialchars(json_encode($engagementStats), ENT_QUOTES) ?>'>
+            <input type="text" name="title" placeholder="Report title" required style="max-width: 260px;">
+            <button type="submit">Save as Report</button>
+        </form>
         <?php endif; ?>
     </header>
     <main>

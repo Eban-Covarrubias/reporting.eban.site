@@ -10,17 +10,6 @@ $editSections = [];
 $allSections = db()->query('SELECT slug, name FROM sections ORDER BY name')->fetchAll(PDO::FETCH_ASSOC);
 $validRoles = ['super_admin', 'analyst', 'viewer'];
 
-function ensureCsrfToken() {
-    if (empty($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-    }
-    return $_SESSION['csrf_token'];
-}
-
-function checkCsrf() {
-    return isset($_POST['csrf_token']) && hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token']);
-}
-
 function saveAnalystSections(int $userId, array $sectionSlugs) {
     $stmt = db()->prepare('DELETE FROM analyst_sections WHERE user_id = ?');
     $stmt->execute([$userId]);
@@ -139,6 +128,7 @@ $users = db()->query(
         <h1>User Management</h1>
         <nav>
             <a href="/index.php">Back to dashboard</a>
+            <a href="/reports.php">Saved Reports</a>
             <a href="/logout.php">Logout</a>
         </nav>
     </header>

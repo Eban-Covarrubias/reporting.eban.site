@@ -139,6 +139,7 @@ if ($hasEngagement) {
         <h1>reporting.eban.site</h1>
         <p>Logged in as <?= htmlspecialchars($user['username']) ?> (<?= htmlspecialchars(ucwords(str_replace('_', ' ', $user['role']))) ?>)</p>
         <nav>
+            <a href="/reports.php">Saved Reports</a>
             <a href="/logout.php">Logout</a>
             <?php if ($user['role'] === 'super_admin'): ?>
                 <a href="/users.php">User Management</a>
@@ -149,8 +150,9 @@ if ($hasEngagement) {
         <?php if (!$hasPerformance && !$hasErrors && !$hasEngagement): ?>
         <section>
             <p class="muted">
-                You don't have access to any report sections yet. Ask a super admin to assign you
-                a section, or check with them about saved reports available to you.
+                You don't have access to any live report sections yet. Ask a super admin to
+                assign you a section, or visit <a href="/reports.php">Saved Reports</a> to see
+                reports that have already been published.
             </p>
         </section>
         <?php endif; ?>

@@ -2,6 +2,7 @@
 require_once __DIR__ . '/lib/auth.php';
 requireSection('performance');
 $user = currentUser();
+$csrfToken = ensureCsrfToken();
 
 // Break the total load time down into the actual Navigation Timing phases,
 // averaged per page, instead of just the single loadTimeMs total shown on
@@ -53,9 +54,17 @@ if ($isDownload) {
         <?php if (!$isDownload): ?>
         <nav>
             <a href="/index.php">Back to dashboard</a>
+            <a href="/reports.php">Saved Reports</a>
             <a href="/load-time-report.php?download=1">Download Report</a>
             <a href="/logout.php">Logout</a>
         </nav>
+        <form method="POST" action="/save-report.php" class="row" style="align-items: center; margin-top: 1rem;">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+            <input type="hidden" name="section" value="performance">
+            <input type="hidden" name="snapshot" value='<?= htmlspecialchars(json_encode($phaseStats), ENT_QUOTES) ?>'>
+            <input type="text" name="title" placeholder="Report title" required style="max-width: 260px;">
+            <button type="submit">Save as Report</button>
+        </form>
         <?php endif; ?>
     </header>
     <main>
