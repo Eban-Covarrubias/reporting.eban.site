@@ -49,21 +49,31 @@ if ($isDownload) {
             <a href="/error-report.php?download=1">Download Report</a>
             <a href="/logout.php">Logout</a>
         </nav>
-        <form method="POST" action="/save-report.php" class="row" style="align-items: center; margin-top: 1rem;">
+        <form method="POST" action="/save-report.php" style="margin-top: 1rem; max-width: 640px;">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
             <input type="hidden" name="section" value="errors">
             <input type="hidden" name="snapshot" value='<?= htmlspecialchars(json_encode($errorDetails), ENT_QUOTES) ?>'>
-            <input type="text" name="title" placeholder="Report title" required style="max-width: 260px;">
+            <label>
+                Report Title
+                <input type="text" name="title" required>
+            </label>
+            <label>
+                Guiding Question <span class="muted">(optional)</span>
+                <textarea name="guiding_question" rows="2"></textarea>
+            </label>
+            <label>
+                What This Tells Us <span class="muted">(optional)</span>
+                <textarea name="what_this_tells_us" rows="4"></textarea>
+            </label>
+            <label>
+                Additional Notes <span class="muted">(optional)</span>
+                <textarea name="additional_notes" rows="3"></textarea>
+            </label>
             <button type="submit">Save as Report</button>
         </form>
         <?php endif; ?>
     </header>
     <main>
-    <p>
-        <strong>Guiding question:</strong> Which specific errors are actually breaking each page,
-        how often does each one fire, and has it been an ongoing problem or a one-off?
-    </p>
-
     <section>
     <h2>Distinct Errors by Page</h2>
     <table>
@@ -94,31 +104,6 @@ if ($isDownload) {
         <canvas id="errorDetailChart" height="100"></canvas>
         <noscript><p class="muted">This chart requires JavaScript; see the table above for the same data.</p></noscript>
     </div>
-    </section>
-
-    <section>
-    <h2>What This Tells Us</h2>
-    <p>
-        Both pages with recorded errors have exactly <strong>one distinct bug each</strong>, not a
-        scattering of different issues &mdash; <code>/product-detail.html</code> throws
-        <code>ReferenceError: cart is not defined</code> at line 273, and
-        <code>/checkout.html</code> throws <code>ReferenceError: paymentProcessor is not defined</code>
-        at line 219. Since the dashboard's error rate table already shows both pages at 100%, this
-        confirms these aren't intermittent bugs affected by browser/timing differences &mdash; they
-        are unconditional script errors that fire on literally every load.
-    </p>
-    <p>
-        The first-seen/last-seen range for both errors spans from the earliest test traffic through
-        the most recent, meaning these bugs have been present and unfixed the entire time data has
-        been collected, rather than being a regression introduced recently.
-    </p>
-    <p>
-        <strong>Answer to the guiding question:</strong> the site has exactly two known, persistent,
-        unconditional bugs &mdash; a missing <code>cart</code> reference on the product detail page and
-        a missing <code>paymentProcessor</code> reference on checkout. Both are single-line reference
-        errors, which is about as cheap a fix as a bug can be, but because they fire on every load of
-        an already-important page (checkout), they're worth prioritizing over anything intermittent.
-    </p>
     </section>
 
     <script>

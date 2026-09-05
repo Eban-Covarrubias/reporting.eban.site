@@ -82,23 +82,31 @@ if ($isDownload) {
             <a href="/engagement-report.php?download=1">Download Report</a>
             <a href="/logout.php">Logout</a>
         </nav>
-        <form method="POST" action="/save-report.php" class="row" style="align-items: center; margin-top: 1rem;">
+        <form method="POST" action="/save-report.php" style="margin-top: 1rem; max-width: 640px;">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
             <input type="hidden" name="section" value="engagement">
             <input type="hidden" name="snapshot" value='<?= htmlspecialchars(json_encode($engagementStats), ENT_QUOTES) ?>'>
-            <input type="text" name="title" placeholder="Report title" required style="max-width: 260px;">
+            <label>
+                Report Title
+                <input type="text" name="title" required>
+            </label>
+            <label>
+                Guiding Question <span class="muted">(optional)</span>
+                <textarea name="guiding_question" rows="2"></textarea>
+            </label>
+            <label>
+                What This Tells Us <span class="muted">(optional)</span>
+                <textarea name="what_this_tells_us" rows="4"></textarea>
+            </label>
+            <label>
+                Additional Notes <span class="muted">(optional)</span>
+                <textarea name="additional_notes" rows="3"></textarea>
+            </label>
             <button type="submit">Save as Report</button>
         </form>
         <?php endif; ?>
     </header>
     <main>
-    <p>
-        <strong>Guiding question:</strong> Are visits to each page genuinely engaged, or are users
-        mostly bouncing quickly or sitting idle? The dashboard's time-on-page pie chart shows total
-        active time per page, but doesn't say whether that time comes from many short visits or a
-        few long ones, or how much of a typical visit is spent idle.
-    </p>
-
     <section>
     <h2>Visit Engagement Buckets by Page</h2>
     <p class="muted">
@@ -133,31 +141,6 @@ if ($isDownload) {
         <canvas id="engagementChart" height="100"></canvas>
         <noscript><p class="muted">This chart requires JavaScript; see the table above for the same data.</p></noscript>
     </div>
-    </section>
-
-    <section>
-    <h2>What This Tells Us</h2>
-    <p>
-        <code>/products.html</code> has the most visits by far, but every single one is a bounce
-        &mdash; nobody spends 5+ active seconds there. That's a very different story than what the
-        dashboard's time-on-page pie chart alone would suggest, since a page can accumulate real
-        total time purely from visit volume rather than genuine per-visit engagement.
-        <code>/product-detail.html</code> and <code>/checkout.html</code> have a healthier mix of
-        brief and engaged visits relative to their volume, meaning the time they show on the
-        dashboard is more likely to reflect real attention, not just many quick hits.
-    </p>
-    <p>
-        Idle percentage is fairly low and consistent across pages (roughly 8&ndash;26% of a visit),
-        so idle time isn't the main driver of engagement differences here &mdash; the split between
-        bounce and engaged visits is.
-    </p>
-    <p>
-        <strong>Answer to the guiding question:</strong> engagement varies a lot by page even though
-        total time-on-page (the dashboard metric) can look comparable. <code>/products.html</code>
-        gets a lot of traffic but essentially no real engagement, while the pages further into the
-        purchase flow hold attention better on a per-visit basis &mdash; a distinction the dashboard's
-        pie chart alone can't show.
-    </p>
     </section>
 
     <script>

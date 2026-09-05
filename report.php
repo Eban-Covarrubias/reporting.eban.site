@@ -38,10 +38,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!checkCsrf()) {
         $error = 'Invalid form submission, please try again.';
     } else {
-        $comments = trim($_POST['analyst_comments'] ?? '');
-        $stmt = db()->prepare('UPDATE reports SET analyst_comments = ? WHERE id = ?');
-        $stmt->execute([$comments !== '' ? $comments : null, $id]);
-        $report['analyst_comments'] = $comments !== '' ? $comments : null;
+        $guidingQuestion = trim($_POST['guiding_question'] ?? '');
+        $whatThisTellsUs = trim($_POST['what_this_tells_us'] ?? '');
+        $additionalNotes = trim($_POST['additional_notes'] ?? '');
+        $stmt = db()->prepare(
+            'UPDATE reports SET guiding_question = ?, what_this_tells_us = ?, additional_notes = ? WHERE id = ?'
+        );
+        $stmt->execute([
+            $guidingQuestion !== '' ? $guidingQuestion : null,
+            $whatThisTellsUs !== '' ? $whatThisTellsUs : null,
+            $additionalNotes !== '' ? $additionalNotes : null,
+            $id,
+        ]);
+        $report['guiding_question'] = $guidingQuestion !== '' ? $guidingQuestion : null;
+        $report['what_this_tells_us'] = $whatThisTellsUs !== '' ? $whatThisTellsUs : null;
+        $report['additional_notes'] = $additionalNotes !== '' ? $additionalNotes : null;
     }
 }
 
@@ -250,24 +261,51 @@ function renderBarRows(array $rows, string $labelKey, array $series): string {
         </section>
         <?php endif; ?>
 
-        <section>
-        <h2>Analyst Comments</h2>
         <?php if ($showEditForm): ?>
-        <form method="POST" action="/report.php?id=<?= (int) $id ?>">
+        <section>
+        <h2>Write-Up</h2>
+        <form method="POST" action="/report.php?id=<?= (int) $id ?>" style="max-width: 640px;">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
             <label>
-                <textarea name="analyst_comments" rows="6" style="width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem;"><?= htmlspecialchars($report['analyst_comments'] ?? '') ?></textarea>
+                Guiding Question <span class="muted">(optional)</span>
+                <textarea name="guiding_question" rows="2"><?= htmlspecialchars($report['guiding_question'] ?? '') ?></textarea>
             </label>
-            <button type="submit">Save Comments</button>
+            <label>
+                What This Tells Us <span class="muted">(optional)</span>
+                <textarea name="what_this_tells_us" rows="4"><?= htmlspecialchars($report['what_this_tells_us'] ?? '') ?></textarea>
+            </label>
+            <label>
+                Additional Notes <span class="muted">(optional)</span>
+                <textarea name="additional_notes" rows="3"><?= htmlspecialchars($report['additional_notes'] ?? '') ?></textarea>
+            </label>
+            <button type="submit">Save</button>
         </form>
+        </section>
         <?php else: ?>
-            <?php if ($report['analyst_comments']): ?>
-                <p><?= nl2br(htmlspecialchars($report['analyst_comments'])) ?></p>
-            <?php else: ?>
-                <p class="muted">No comments yet.</p>
+            <?php if ($report['guiding_question']): ?>
+            <section>
+            <h2>Guiding Question</h2>
+            <p><?= nl2br(htmlspecialchars($report['guiding_question'])) ?></p>
+            </section>
+            <?php endif; ?>
+            <?php if ($report['what_this_tells_us']): ?>
+            <section>
+            <h2>What This Tells Us</h2>
+            <p><?= nl2br(htmlspecialchars($report['what_this_tells_us'])) ?></p>
+            </section>
+            <?php endif; ?>
+            <?php if ($report['additional_notes']): ?>
+            <section>
+            <h2>Additional Notes</h2>
+            <p><?= nl2br(htmlspecialchars($report['additional_notes'])) ?></p>
+            </section>
+            <?php endif; ?>
+            <?php if (!$report['guiding_question'] && !$report['what_this_tells_us'] && !$report['additional_notes']): ?>
+            <section>
+            <p class="muted">No write-up added for this report yet.</p>
+            </section>
             <?php endif; ?>
         <?php endif; ?>
-        </section>
     </main>
 
     <?php if (!$isPdf): ?>

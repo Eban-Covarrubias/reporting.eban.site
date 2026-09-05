@@ -61,23 +61,31 @@ if ($isDownload) {
             <a href="/load-time-report.php?download=1">Download Report</a>
             <a href="/logout.php">Logout</a>
         </nav>
-        <form method="POST" action="/save-report.php" class="row" style="align-items: center; margin-top: 1rem;">
+        <form method="POST" action="/save-report.php" style="margin-top: 1rem; max-width: 640px;">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
             <input type="hidden" name="section" value="performance">
             <input type="hidden" name="snapshot" value='<?= htmlspecialchars(json_encode($phaseStats), ENT_QUOTES) ?>'>
-            <input type="text" name="title" placeholder="Report title" required style="max-width: 260px;">
+            <label>
+                Report Title
+                <input type="text" name="title" required>
+            </label>
+            <label>
+                Guiding Question <span class="muted">(optional)</span>
+                <textarea name="guiding_question" rows="2"></textarea>
+            </label>
+            <label>
+                What This Tells Us <span class="muted">(optional)</span>
+                <textarea name="what_this_tells_us" rows="4"></textarea>
+            </label>
+            <label>
+                Additional Notes <span class="muted">(optional)</span>
+                <textarea name="additional_notes" rows="3"></textarea>
+            </label>
             <button type="submit">Save as Report</button>
         </form>
         <?php endif; ?>
     </header>
     <main>
-    <p>
-        <strong>Guiding question:</strong> For each page, is load time dominated by network/server
-        delay (DNS lookup, TCP/TLS connect, waiting on the server) or by browser-side rendering
-        (DOM processing)? Which pages have the worst bottleneck, and where should optimization
-        effort actually go?
-    </p>
-
     <section>
     <h2>Average Time per Load Phase, by Page (ms)</h2>
     <table>
@@ -112,31 +120,6 @@ if ($isDownload) {
         <canvas id="phaseChart" height="100"></canvas>
         <noscript><p class="muted">This chart requires JavaScript; see the table above for the same data.</p></noscript>
     </div>
-    </section>
-
-    <section>
-    <h2>What This Tells Us</h2>
-    <p>
-        Across every tracked page, <strong>DOM processing is by far the largest phase</strong> of
-        total load time &mdash; consistently much larger than DNS lookup, TCP/TLS connection setup,
-        or TTFB (time waiting on the server to respond). DNS and TCP are close to 0ms on most pages,
-        meaning connection setup isn't the bottleneck here (likely due to connection reuse between
-        requests on this small site). TTFB stays fairly flat across pages (roughly 40&ndash;62ms),
-        suggesting the server itself responds consistently regardless of which page is requested.
-    </p>
-    <p>
-        <code>/index.html</code> stands out as the heaviest page overall &mdash; it has the highest
-        DOM processing time of any page by a wide margin, and is also the only page with a
-        non-trivial DNS lookup cost recorded. <code>/product-detail.html</code>, by contrast, has
-        the lowest DOM processing time and is the fastest-loading page overall.
-    </p>
-    <p>
-        <strong>Answer to the guiding question:</strong> load time on this site is dominated by
-        client-side rendering work, not network or server delay. If we wanted to speed up page
-        loads, the highest-leverage place to look is what's happening in the DOM/JavaScript during
-        page construction (e.g. the site's own inline/loaded scripts), rather than server response
-        time or connection setup &mdash; those are already fast and fairly consistent across pages.
-    </p>
     </section>
     </main>
 

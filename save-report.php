@@ -34,8 +34,25 @@ if ($title === '' || !is_array($rows)) {
     exit;
 }
 
-$stmt = db()->prepare('INSERT INTO reports (title, section, created_by, snapshot) VALUES (?, ?, ?, ?)');
-$stmt->execute([$title, $section, $user['id'], json_encode($rows)]);
+// All three write-up fields are optional - a saved report can just be the
+// data, with the analysis added later (or never) from report.php.
+$guidingQuestion = trim($_POST['guiding_question'] ?? '');
+$whatThisTellsUs = trim($_POST['what_this_tells_us'] ?? '');
+$additionalNotes = trim($_POST['additional_notes'] ?? '');
+
+$stmt = db()->prepare(
+    'INSERT INTO reports (title, section, created_by, snapshot, guiding_question, what_this_tells_us, additional_notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?)'
+);
+$stmt->execute([
+    $title,
+    $section,
+    $user['id'],
+    json_encode($rows),
+    $guidingQuestion !== '' ? $guidingQuestion : null,
+    $whatThisTellsUs !== '' ? $whatThisTellsUs : null,
+    $additionalNotes !== '' ? $additionalNotes : null,
+]);
 
 header('Location: /report.php?id=' . db()->lastInsertId());
 exit;
