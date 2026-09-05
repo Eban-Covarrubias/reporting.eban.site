@@ -109,7 +109,7 @@ function renderBarRows(array $rows, string $labelKey, array $series): string {
     <title><?= htmlspecialchars($report['title']) ?></title>
     <link rel="stylesheet" href="/css/style.css">
     <?php if (!$isPdf): ?>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
     <?php endif; ?>
 </head>
 <body>
@@ -175,6 +175,7 @@ function renderBarRows(array $rows, string $labelKey, array $series): string {
                 ]) ?>
             <?php else: ?>
                 <canvas id="reportChart" height="100"></canvas>
+                <noscript><p class="muted">This chart requires JavaScript; see the table above for the same data.</p></noscript>
             <?php endif; ?>
         </div>
         </section>
@@ -210,6 +211,7 @@ function renderBarRows(array $rows, string $labelKey, array $series): string {
                 ]) ?>
             <?php else: ?>
                 <canvas id="reportChart" height="100"></canvas>
+                <noscript><p class="muted">This chart requires JavaScript; see the table above for the same data.</p></noscript>
             <?php endif; ?>
         </div>
         </section>
@@ -242,6 +244,7 @@ function renderBarRows(array $rows, string $labelKey, array $series): string {
                 ]) ?>
             <?php else: ?>
                 <canvas id="reportChart" height="100"></canvas>
+                <noscript><p class="muted">This chart requires JavaScript; see the table above for the same data.</p></noscript>
             <?php endif; ?>
         </div>
         </section>

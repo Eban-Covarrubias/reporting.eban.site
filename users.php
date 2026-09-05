@@ -166,8 +166,9 @@ $users = db()->query(
                         <?php endforeach; ?>
                     </select>
                 </label>
+                <noscript><style>#sectionsField { display: block !important; }</style></noscript>
                 <div id="sectionsField" style="display: <?= ($editUser['role'] ?? '') === 'analyst' ? 'block' : 'none' ?>;">
-                    <label>Sections (analyst only)</label>
+                    <label>Sections (analyst only, ignored for other roles)</label>
                     <?php foreach ($allSections as $s): ?>
                     <label>
                         <input type="checkbox" name="sections[]" value="<?= htmlspecialchars($s['slug']) ?>" <?= in_array($s['slug'], $editSections, true) ? 'checked' : '' ?>>

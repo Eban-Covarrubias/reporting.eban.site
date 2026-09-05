@@ -131,8 +131,8 @@ if ($hasEngagement) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="/css/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-error-bars@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-error-bars@4.4.5"></script>
 </head>
 <body>
     <?php include __DIR__ . '/partials/theme.php'; ?>
@@ -166,6 +166,7 @@ if ($hasEngagement) {
             </div>
             <div class="chart-card">
                 <canvas id="loadTimeChart" height="100"></canvas>
+                <noscript><p class="muted">This chart requires JavaScript. See the <a href="/load-time-report.php">full report</a> for a data table version.</p></noscript>
             </div>
         </section>
         <?php endif; ?>
@@ -198,6 +199,7 @@ if ($hasEngagement) {
             </div>
             <div class="chart-card small">
                 <canvas id="timeOnPageChart"></canvas>
+                <noscript><p class="muted">This chart requires JavaScript. See the <a href="/engagement-report.php">full report</a> for a data table version.</p></noscript>
             </div>
         </section>
         <?php endif; ?>

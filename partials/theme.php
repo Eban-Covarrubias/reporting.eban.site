@@ -8,6 +8,7 @@
         } catch (e) {}
     })();
 </script>
+<noscript><style>.theme-toggle { display: none !important; }</style></noscript>
 <button id="themeToggle" class="theme-toggle" type="button" aria-label="Toggle light/dark mode">&#9728;&#65039;</button>
 <script>
     (function () {

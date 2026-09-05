@@ -67,7 +67,7 @@ if ($isDownload) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Engagement Report</title>
     <link rel="stylesheet" href="/css/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
 </head>
 <body>
     <?php if (!$isDownload): ?>
@@ -131,6 +131,7 @@ if ($isDownload) {
     <h2>Bounce / Brief / Engaged Visits by Page</h2>
     <div class="chart-card">
         <canvas id="engagementChart" height="100"></canvas>
+        <noscript><p class="muted">This chart requires JavaScript; see the table above for the same data.</p></noscript>
     </div>
     </section>
 
