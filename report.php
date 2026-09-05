@@ -54,6 +54,52 @@ $sectionNames = [];
 foreach (db()->query('SELECT slug, name FROM sections')->fetchAll(PDO::FETCH_ASSOC) as $s) {
     $sectionNames[$s['slug']] = $s['name'];
 }
+
+// wkhtmltopdf's bundled WebKit JS engine is old enough that it can't parse
+// Chart.js 4's bundle (fails with a `let` redeclaration syntax error), so the
+// interactive canvas charts render blank in the PDF. Rather than pull in an
+// older charting library just for the export path, the ?pdf=1 view renders
+// this dependency-free proportional-width bar chart instead - no JS needed
+// at all, so it can't hit any JS-engine compatibility issue.
+function renderBarRows(array $rows, string $labelKey, array $series): string {
+    $maxTotal = 0.0;
+    foreach ($rows as $row) {
+        $total = 0.0;
+        foreach ($series as $s) {
+            $total += (float) $row[$s['key']];
+        }
+        $maxTotal = max($maxTotal, $total);
+    }
+    if ($maxTotal <= 0) {
+        $maxTotal = 1;
+    }
+
+    $html = '<div style="display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;font-size:0.85rem;">';
+    foreach ($series as $s) {
+        $html .= '<span><span style="display:inline-block;width:10px;height:10px;background:'
+            . htmlspecialchars($s['color']) . ';border-radius:2px;margin-right:0.35rem;"></span>'
+            . htmlspecialchars($s['label']) . '</span>';
+    }
+    $html .= '</div>';
+
+    foreach ($rows as $row) {
+        $html .= '<div style="margin-bottom:0.85rem;">';
+        $html .= '<div style="font-size:0.85rem;color:var(--muted);margin-bottom:0.3rem;">'
+            . htmlspecialchars($row[$labelKey]) . '</div>';
+        $html .= '<div style="display:flex;height:26px;border-radius:4px;overflow:hidden;background:var(--bg);border:1px solid var(--border);">';
+        foreach ($series as $s) {
+            $val = (float) $row[$s['key']];
+            $pct = $val / $maxTotal * 100;
+            if ($pct <= 0) {
+                continue;
+            }
+            $html .= '<div style="width:' . round($pct, 2) . '%;background:' . htmlspecialchars($s['color'])
+                . ';" title="' . htmlspecialchars($s['label'] . ': ' . $val) . '"></div>';
+        }
+        $html .= '</div></div>';
+    }
+    return $html;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -62,7 +108,9 @@ foreach (db()->query('SELECT slug, name FROM sections')->fetchAll(PDO::FETCH_ASS
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($report['title']) ?></title>
     <link rel="stylesheet" href="/css/style.css">
+    <?php if (!$isPdf): ?>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <?php endif; ?>
 </head>
 <body>
     <header>
@@ -112,7 +160,20 @@ foreach (db()->query('SELECT slug, name FROM sections')->fetchAll(PDO::FETCH_ASS
         </section>
         <section>
         <h2>Load Time Composition by Page</h2>
-        <div class="chart-card"><canvas id="reportChart" height="100"></canvas></div>
+        <div class="chart-card">
+            <?php if ($isPdf): ?>
+                <?= renderBarRows($rows, 'page', [
+                    ['key' => 'avg_dns_ms', 'label' => 'DNS Lookup', 'color' => '#4e79a7'],
+                    ['key' => 'avg_tcp_ms', 'label' => 'TCP/TLS Connect', 'color' => '#f28e2b'],
+                    ['key' => 'avg_ttfb_ms', 'label' => 'TTFB (Server Wait)', 'color' => '#e15759'],
+                    ['key' => 'avg_download_ms', 'label' => 'Response Download', 'color' => '#76b7b2'],
+                    ['key' => 'avg_dom_processing_ms', 'label' => 'DOM Processing', 'color' => '#59a14f'],
+                    ['key' => 'avg_load_event_ms', 'label' => 'Load Event', 'color' => '#edc948'],
+                ]) ?>
+            <?php else: ?>
+                <canvas id="reportChart" height="100"></canvas>
+            <?php endif; ?>
+        </div>
         </section>
 
         <?php elseif ($report['section'] === 'errors'): ?>
@@ -134,7 +195,20 @@ foreach (db()->query('SELECT slug, name FROM sections')->fetchAll(PDO::FETCH_ASS
         </section>
         <section>
         <h2>Occurrences by Error</h2>
-        <div class="chart-card"><canvas id="reportChart" height="100"></canvas></div>
+        <div class="chart-card">
+            <?php if ($isPdf): ?>
+                <?php
+                $errorBarRows = array_map(function ($row) {
+                    return ['label' => $row['page'] . ': ' . $row['message'], 'occurrences' => $row['occurrences']];
+                }, $rows);
+                ?>
+                <?= renderBarRows($errorBarRows, 'label', [
+                    ['key' => 'occurrences', 'label' => 'Occurrences', 'color' => '#4e79a7'],
+                ]) ?>
+            <?php else: ?>
+                <canvas id="reportChart" height="100"></canvas>
+            <?php endif; ?>
+        </div>
         </section>
 
         <?php elseif ($report['section'] === 'engagement'): ?>
@@ -156,7 +230,17 @@ foreach (db()->query('SELECT slug, name FROM sections')->fetchAll(PDO::FETCH_ASS
         </section>
         <section>
         <h2>Bounce / Brief / Engaged Visits by Page</h2>
-        <div class="chart-card"><canvas id="reportChart" height="100"></canvas></div>
+        <div class="chart-card">
+            <?php if ($isPdf): ?>
+                <?= renderBarRows($rows, 'page', [
+                    ['key' => 'bounce_count', 'label' => 'Bounce (<5s)', 'color' => '#e15759'],
+                    ['key' => 'brief_count', 'label' => 'Brief (5-60s)', 'color' => '#f28e2b'],
+                    ['key' => 'engaged_count', 'label' => 'Engaged (60s+)', 'color' => '#59a14f'],
+                ]) ?>
+            <?php else: ?>
+                <canvas id="reportChart" height="100"></canvas>
+            <?php endif; ?>
+        </div>
         </section>
         <?php endif; ?>
 
@@ -180,6 +264,7 @@ foreach (db()->query('SELECT slug, name FROM sections')->fetchAll(PDO::FETCH_ASS
         </section>
     </main>
 
+    <?php if (!$isPdf): ?>
     <script>
         const rows = <?= json_encode($rows) ?>;
         const section = <?= json_encode($report['section']) ?>;
@@ -261,5 +346,6 @@ foreach (db()->query('SELECT slug, name FROM sections')->fetchAll(PDO::FETCH_ASS
             });
         }
     </script>
+    <?php endif; ?>
 </body>
 </html>

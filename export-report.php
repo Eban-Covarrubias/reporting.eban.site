@@ -29,19 +29,26 @@ if (!$canView) {
 // the current session cookie through so it hits the same permission checks
 // instead of duplicating the report's markup here.
 $reportUrl = 'https://' . $_SERVER['HTTP_HOST'] . '/report.php?id=' . $id . '&pdf=1';
+$sessionId = session_id();
 
-$pdf = new \Knp\Snappy\Pdf('/usr/bin/wkhtmltopdf');
-$pdf->setOption('cookie', ['PHPSESSID' => session_id()]);
-// Charts render via Chart.js after page load; give wkhtmltopdf's headless
-// WebKit a moment to actually draw them before it snapshots the page.
-$pdf->setOption('javascript-delay', 500);
-$pdf->setOption('no-stop-slow-scripts', true);
+// PHP's default session handler locks the session file for the life of the
+// script. wkhtmltopdf is about to make its own HTTP request back to this
+// same server using this same session cookie (to render report.php as this
+// user) - if we don't release the lock first, that inbound request blocks
+// forever waiting on a lock we're still holding while we wait on it. Closing
+// the session here is safe since nothing below reads or writes $_SESSION.
+session_write_close();
+
+// Apache's www-data has no HOME set, which makes wkhtmltopdf's underlying
+// Qt/WebKit engine hang indefinitely looking for a cache/config directory.
+$pdf = new \Knp\Snappy\Pdf('/usr/bin/wkhtmltopdf', [], ['HOME' => '/tmp']);
+$pdf->setOption('cookie', ['PHPSESSID' => $sessionId]);
 
 try {
-    $output = $pdf->getOutputFromUrl($reportUrl);
+    $output = $pdf->getOutput($reportUrl);
 } catch (\Throwable $e) {
     http_response_code(500);
-    echo 'Could not generate the PDF. This usually means wkhtmltopdf is not installed on the server.';
+    echo 'Could not generate the PDF. Please try again, or contact the site admin if this keeps happening.';
     exit;
 }
 
