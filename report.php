@@ -47,6 +47,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $csrfToken = ensureCsrfToken();
 $rows = json_decode($report['snapshot'], true);
+$isPdf = isset($_GET['pdf']);
+$showEditForm = $canEdit && !$isPdf;
 
 $sectionNames = [];
 foreach (db()->query('SELECT slug, name FROM sections')->fetchAll(PDO::FETCH_ASSOC) as $s) {
@@ -70,13 +72,16 @@ foreach (db()->query('SELECT slug, name FROM sections')->fetchAll(PDO::FETCH_ASS
             &middot; Saved by <?= htmlspecialchars($report['created_by_username']) ?>
             on <?= htmlspecialchars($report['created_at']) ?>
         </p>
+        <?php if (!$isPdf): ?>
         <nav>
             <a href="/reports.php">Back to Saved Reports</a>
             <?php if ($user['role'] !== 'viewer'): ?>
                 <a href="/index.php">Dashboard</a>
             <?php endif; ?>
+            <a href="/export-report.php?id=<?= (int) $id ?>">Download PDF</a>
             <a href="/logout.php">Logout</a>
         </nav>
+        <?php endif; ?>
     </header>
     <main>
         <?php if ($error): ?>
@@ -157,7 +162,7 @@ foreach (db()->query('SELECT slug, name FROM sections')->fetchAll(PDO::FETCH_ASS
 
         <section>
         <h2>Analyst Comments</h2>
-        <?php if ($canEdit): ?>
+        <?php if ($showEditForm): ?>
         <form method="POST" action="/report.php?id=<?= (int) $id ?>">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
             <label>
@@ -210,6 +215,7 @@ foreach (db()->query('SELECT slug, name FROM sections')->fetchAll(PDO::FETCH_ASS
                     })
                 },
                 options: {
+                    animation: false,
                     scales: {
                         x: { stacked: true },
                         y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Time (ms)' } }
@@ -228,6 +234,7 @@ foreach (db()->query('SELECT slug, name FROM sections')->fetchAll(PDO::FETCH_ASS
                     }]
                 },
                 options: {
+                    animation: false,
                     indexAxis: 'y',
                     plugins: { legend: { display: false } },
                     scales: { x: { beginAtZero: true, title: { display: true, text: 'Occurrences' } } }
@@ -245,6 +252,7 @@ foreach (db()->query('SELECT slug, name FROM sections')->fetchAll(PDO::FETCH_ASS
                     ]
                 },
                 options: {
+                    animation: false,
                     scales: {
                         x: { stacked: true },
                         y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Visit count' } }
