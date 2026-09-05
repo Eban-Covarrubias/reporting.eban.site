@@ -2,67 +2,76 @@
 require_once __DIR__ . '/lib/auth.php';
 requireLogin();
 $user = currentUser();
+$sections = userSections($user);
+$hasPerformance = in_array('performance', $sections, true);
+$hasErrors = in_array('errors', $sections, true);
+$hasEngagement = in_array('engagement', $sections, true);
 
 // Bar chart: average page load time per page, with standard deviation.
-$loadTimeStats = db()->query(
-    "SELECT
-       CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END AS page,
-       AVG(CAST(JSON_UNQUOTE(JSON_EXTRACT(data, '$.loadTimeMs')) AS DECIMAL(10,2))) AS avg_load_time,
-       STDDEV(CAST(JSON_UNQUOTE(JSON_EXTRACT(data, '$.loadTimeMs')) AS DECIMAL(10,2))) AS stddev_load_time,
-       COUNT(*) AS n
-     FROM events
-     WHERE type = 'performance'
-     GROUP BY CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END
-     ORDER BY avg_load_time DESC"
-)->fetchAll(PDO::FETCH_ASSOC);
-
-// Only these 4 pages are considered for error frequency / error rate.
-$trackedPages = ['/index.html', '/products.html', '/checkout.html', '/product-detail.html'];
-
-$errorCountRows = db()->query(
-    "SELECT
-       CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END AS page,
-       COUNT(*) AS error_count
-     FROM events
-     WHERE type = 'error'
-     GROUP BY CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END"
-)->fetchAll(PDO::FETCH_ASSOC);
-$errorCountByPage = [];
-foreach ($errorCountRows as $row) {
-    $errorCountByPage[$row['page']] = (int) $row['error_count'];
-}
-
-// Error rate: errors as a percentage of page accesses (one 'static' event fires per page load).
-$accessRows = db()->query(
-    "SELECT
-       CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END AS page,
-       COUNT(*) AS access_count
-     FROM events
-     WHERE type = 'static'
-     GROUP BY CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END"
-)->fetchAll(PDO::FETCH_ASSOC);
-$accessCountByPage = [];
-foreach ($accessRows as $row) {
-    $accessCountByPage[$row['page']] = (int) $row['access_count'];
+$loadTimeStats = [];
+if ($hasPerformance) {
+    $loadTimeStats = db()->query(
+        "SELECT
+           CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END AS page,
+           AVG(CAST(JSON_UNQUOTE(JSON_EXTRACT(data, '$.loadTimeMs')) AS DECIMAL(10,2))) AS avg_load_time,
+           STDDEV(CAST(JSON_UNQUOTE(JSON_EXTRACT(data, '$.loadTimeMs')) AS DECIMAL(10,2))) AS stddev_load_time,
+           COUNT(*) AS n
+         FROM events
+         WHERE type = 'performance'
+         GROUP BY CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END
+         ORDER BY avg_load_time DESC"
+    )->fetchAll(PDO::FETCH_ASSOC);
 }
 
 // Table: error count / rate for each tracked page (including 0s).
 $errorRateByPage = [];
-foreach ($trackedPages as $page) {
-    $errors = $errorCountByPage[$page] ?? 0;
-    $accesses = $accessCountByPage[$page] ?? 0;
+if ($hasErrors) {
+    // Only these 4 pages are considered for error frequency / error rate.
+    $trackedPages = ['/index.html', '/products.html', '/checkout.html', '/product-detail.html'];
 
-    if ($accesses > 0) {
-        $rate = round($errors / $accesses * 100, 1);
-    } else {
-        $rate = $errors === 0 ? 0.0 : null;
+    $errorCountRows = db()->query(
+        "SELECT
+           CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END AS page,
+           COUNT(*) AS error_count
+         FROM events
+         WHERE type = 'error'
+         GROUP BY CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    $errorCountByPage = [];
+    foreach ($errorCountRows as $row) {
+        $errorCountByPage[$row['page']] = (int) $row['error_count'];
     }
-    $errorRateByPage[] = [
-        'page' => $page,
-        'errors' => $errors,
-        'accesses' => $accesses,
-        'rate' => $rate,
-    ];
+
+    // Error rate: errors as a percentage of page accesses (one 'static' event fires per page load).
+    $accessRows = db()->query(
+        "SELECT
+           CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END AS page,
+           COUNT(*) AS access_count
+         FROM events
+         WHERE type = 'static'
+         GROUP BY CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    $accessCountByPage = [];
+    foreach ($accessRows as $row) {
+        $accessCountByPage[$row['page']] = (int) $row['access_count'];
+    }
+
+    foreach ($trackedPages as $page) {
+        $errors = $errorCountByPage[$page] ?? 0;
+        $accesses = $accessCountByPage[$page] ?? 0;
+
+        if ($accesses > 0) {
+            $rate = round($errors / $accesses * 100, 1);
+        } else {
+            $rate = $errors === 0 ? 0.0 : null;
+        }
+        $errorRateByPage[] = [
+            'page' => $page,
+            'errors' => $errors,
+            'accesses' => $accesses,
+            'rate' => $rate,
+        ];
+    }
 }
 
 // Pie chart: active time spent per page, summed across visits.
@@ -72,45 +81,48 @@ foreach ($trackedPages as $page) {
 // - Each individual visit is also capped at 10 minutes as a backstop, in case
 //   a visit ends during an idle gap that never got logged (e.g. tab closed
 //   before any activity resumed to trigger the idle write).
-$VISIT_CAP_MS = 10 * 60 * 1000;
-$timeOnPageStmt = db()->prepare(
-    "WITH ordered_events AS (
-        SELECT
-            session_id,
-            CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END AS page,
-            type, client_timestamp,
-            ROW_NUMBER() OVER (PARTITION BY session_id, page, type ORDER BY client_timestamp) AS rn
-        FROM events
-        WHERE type IN ('page_enter', 'page_leave')
-          AND page IN ('/', '/index.html', 'index', '/products.html', '/checkout.html', '/product-detail.html')
-     ),
-     paired AS (
-        SELECT e.session_id, e.page, e.client_timestamp AS enter_ts, l.client_timestamp AS leave_ts
-        FROM ordered_events e
-        JOIN ordered_events l ON e.session_id = l.session_id AND e.page = l.page AND e.rn = l.rn
-            AND e.type = 'page_enter' AND l.type = 'page_leave'
-        WHERE l.client_timestamp > e.client_timestamp
-     ),
-     idle_per_visit AS (
-        SELECT p.session_id, p.page, p.enter_ts, p.leave_ts,
-               COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(ev.data, '$.durationMs')) AS UNSIGNED)), 0) AS idle_ms
-        FROM paired p
-        LEFT JOIN events ev
-            ON ev.session_id = p.session_id
-           AND CASE WHEN ev.page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE ev.page END = p.page
-           AND ev.type = 'idle'
-           AND ev.client_timestamp BETWEEN p.enter_ts AND p.leave_ts
-        GROUP BY p.session_id, p.page, p.enter_ts, p.leave_ts
-     )
-     SELECT page,
-            SUM(LEAST(GREATEST(leave_ts - enter_ts - idle_ms, 0), :cap)) AS active_ms
-     FROM idle_per_visit
-     GROUP BY page
-     ORDER BY active_ms DESC"
-);
-$timeOnPageStmt->bindValue(':cap', $VISIT_CAP_MS, PDO::PARAM_INT);
-$timeOnPageStmt->execute();
-$timeOnPageStats = $timeOnPageStmt->fetchAll(PDO::FETCH_ASSOC);
+$timeOnPageStats = [];
+if ($hasEngagement) {
+    $VISIT_CAP_MS = 10 * 60 * 1000;
+    $timeOnPageStmt = db()->prepare(
+        "WITH ordered_events AS (
+            SELECT
+                session_id,
+                CASE WHEN page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE page END AS page,
+                type, client_timestamp,
+                ROW_NUMBER() OVER (PARTITION BY session_id, page, type ORDER BY client_timestamp) AS rn
+            FROM events
+            WHERE type IN ('page_enter', 'page_leave')
+              AND page IN ('/', '/index.html', 'index', '/products.html', '/checkout.html', '/product-detail.html')
+         ),
+         paired AS (
+            SELECT e.session_id, e.page, e.client_timestamp AS enter_ts, l.client_timestamp AS leave_ts
+            FROM ordered_events e
+            JOIN ordered_events l ON e.session_id = l.session_id AND e.page = l.page AND e.rn = l.rn
+                AND e.type = 'page_enter' AND l.type = 'page_leave'
+            WHERE l.client_timestamp > e.client_timestamp
+         ),
+         idle_per_visit AS (
+            SELECT p.session_id, p.page, p.enter_ts, p.leave_ts,
+                   COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(ev.data, '$.durationMs')) AS UNSIGNED)), 0) AS idle_ms
+            FROM paired p
+            LEFT JOIN events ev
+                ON ev.session_id = p.session_id
+               AND CASE WHEN ev.page IN ('/', '/index.html', 'index') THEN '/index.html' ELSE ev.page END = p.page
+               AND ev.type = 'idle'
+               AND ev.client_timestamp BETWEEN p.enter_ts AND p.leave_ts
+            GROUP BY p.session_id, p.page, p.enter_ts, p.leave_ts
+         )
+         SELECT page,
+                SUM(LEAST(GREATEST(leave_ts - enter_ts - idle_ms, 0), :cap)) AS active_ms
+         FROM idle_per_visit
+         GROUP BY page
+         ORDER BY active_ms DESC"
+    );
+    $timeOnPageStmt->bindValue(':cap', $VISIT_CAP_MS, PDO::PARAM_INT);
+    $timeOnPageStmt->execute();
+    $timeOnPageStats = $timeOnPageStmt->fetchAll(PDO::FETCH_ASSOC);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -125,15 +137,25 @@ $timeOnPageStats = $timeOnPageStmt->fetchAll(PDO::FETCH_ASSOC);
 <body>
     <header>
         <h1>reporting.eban.site</h1>
-        <p>Logged in as <?= htmlspecialchars($user['username']) ?> (<?= $user['is_admin'] ? 'admin' : 'basic' ?>)</p>
+        <p>Logged in as <?= htmlspecialchars($user['username']) ?> (<?= htmlspecialchars(ucwords(str_replace('_', ' ', $user['role']))) ?>)</p>
         <nav>
             <a href="/logout.php">Logout</a>
-            <?php if ($user['is_admin']): ?>
+            <?php if ($user['role'] === 'super_admin'): ?>
                 <a href="/users.php">User Management</a>
             <?php endif; ?>
         </nav>
     </header>
     <main>
+        <?php if (!$hasPerformance && !$hasErrors && !$hasEngagement): ?>
+        <section>
+            <p class="muted">
+                You don't have access to any report sections yet. Ask a super admin to assign you
+                a section, or check with them about saved reports available to you.
+            </p>
+        </section>
+        <?php endif; ?>
+
+        <?php if ($hasPerformance): ?>
         <section>
             <div class="section-header">
                 <h2>Average Page Load Time by Page (&plusmn; 1 std dev)</h2>
@@ -143,7 +165,9 @@ $timeOnPageStats = $timeOnPageStmt->fetchAll(PDO::FETCH_ASSOC);
                 <canvas id="loadTimeChart" height="100"></canvas>
             </div>
         </section>
+        <?php endif; ?>
 
+        <?php if ($hasErrors): ?>
         <section>
             <div class="section-header">
                 <h2>Error Rate by Page</h2>
@@ -161,7 +185,9 @@ $timeOnPageStats = $timeOnPageStmt->fetchAll(PDO::FETCH_ASSOC);
                 <?php endforeach; ?>
             </table>
         </section>
+        <?php endif; ?>
 
+        <?php if ($hasEngagement): ?>
         <section>
             <div class="section-header">
                 <h2>Time Spent on Page (active time, idle gaps excluded)</h2>
@@ -171,6 +197,7 @@ $timeOnPageStats = $timeOnPageStmt->fetchAll(PDO::FETCH_ASSOC);
                 <canvas id="timeOnPageChart"></canvas>
             </div>
         </section>
+        <?php endif; ?>
     </main>
 
     <script>
@@ -199,6 +226,7 @@ $timeOnPageStats = $timeOnPageStmt->fetchAll(PDO::FETCH_ASSOC);
             return 'rgb(' + lr + ', ' + lg + ', ' + lb + ')';
         }
 
+        if (document.getElementById('loadTimeChart')) {
         new Chart(document.getElementById('loadTimeChart'), {
             type: 'barWithErrorBars',
             data: {
@@ -231,7 +259,9 @@ $timeOnPageStats = $timeOnPageStmt->fetchAll(PDO::FETCH_ASSOC);
                 }
             }
         });
+        }
 
+        if (document.getElementById('timeOnPageChart')) {
         new Chart(document.getElementById('timeOnPageChart'), {
             type: 'pie',
             data: {
@@ -256,6 +286,7 @@ $timeOnPageStats = $timeOnPageStmt->fetchAll(PDO::FETCH_ASSOC);
                 }
             }
         });
+        }
     </script>
 </body>
 </html>

@@ -1,10 +1,14 @@
 <?php
 require_once __DIR__ . '/lib/auth.php';
-requireAdmin();
+requireRole('super_admin');
 
 $me = currentUser();
 $error = null;
 $editUser = null;
+$editSections = [];
+
+$allSections = db()->query('SELECT slug, name FROM sections ORDER BY name')->fetchAll(PDO::FETCH_ASSOC);
+$validRoles = ['super_admin', 'analyst', 'viewer'];
 
 function ensureCsrfToken() {
     if (empty($_SESSION['csrf_token'])) {
@@ -17,6 +21,17 @@ function checkCsrf() {
     return isset($_POST['csrf_token']) && hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token']);
 }
 
+function saveAnalystSections(int $userId, array $sectionSlugs) {
+    $stmt = db()->prepare('DELETE FROM analyst_sections WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    if ($sectionSlugs) {
+        $insert = db()->prepare('INSERT INTO analyst_sections (user_id, section_slug) VALUES (?, ?)');
+        foreach ($sectionSlugs as $slug) {
+            $insert->execute([$userId, $slug]);
+        }
+    }
+}
+
 $csrfToken = ensureCsrfToken();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -24,19 +39,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Invalid form submission, please try again.';
     } else {
         $action = $_POST['action'] ?? '';
+        $role = in_array($_POST['role'] ?? '', $validRoles, true) ? $_POST['role'] : 'viewer';
+        $sectionSlugs = $role === 'analyst' ? array_intersect($_POST['sections'] ?? [], array_column($allSections, 'slug')) : [];
 
         if ($action === 'create') {
             $username = trim($_POST['username'] ?? '');
             $email = trim($_POST['email'] ?? '');
             $password = $_POST['password'] ?? '';
-            $isAdmin = isset($_POST['is_admin']) ? 1 : 0;
 
             if ($username === '' || $email === '' || $password === '') {
                 $error = 'Username, email, and password are all required.';
             } else {
                 try {
-                    $stmt = db()->prepare('INSERT INTO users (username, email, password_hash, is_admin) VALUES (?, ?, ?, ?)');
-                    $stmt->execute([$username, $email, password_hash($password, PASSWORD_DEFAULT), $isAdmin]);
+                    $stmt = db()->prepare('INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)');
+                    $stmt->execute([$username, $email, password_hash($password, PASSWORD_DEFAULT), $role]);
+                    saveAnalystSections((int) db()->lastInsertId(), $sectionSlugs);
                     header('Location: /users.php');
                     exit;
                 } catch (PDOException $e) {
@@ -48,19 +65,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $username = trim($_POST['username'] ?? '');
             $email = trim($_POST['email'] ?? '');
             $password = $_POST['password'] ?? '';
-            $isAdmin = isset($_POST['is_admin']) ? 1 : 0;
 
             if ($username === '' || $email === '') {
                 $error = 'Username and email are required.';
+            } elseif ($id === (int) $me['id'] && $role !== 'super_admin') {
+                $error = 'You cannot demote your own account while logged in.';
             } else {
                 try {
                     if ($password !== '') {
-                        $stmt = db()->prepare('UPDATE users SET username = ?, email = ?, password_hash = ?, is_admin = ? WHERE id = ?');
-                        $stmt->execute([$username, $email, password_hash($password, PASSWORD_DEFAULT), $isAdmin, $id]);
+                        $stmt = db()->prepare('UPDATE users SET username = ?, email = ?, password_hash = ?, role = ? WHERE id = ?');
+                        $stmt->execute([$username, $email, password_hash($password, PASSWORD_DEFAULT), $role, $id]);
                     } else {
-                        $stmt = db()->prepare('UPDATE users SET username = ?, email = ?, is_admin = ? WHERE id = ?');
-                        $stmt->execute([$username, $email, $isAdmin, $id]);
+                        $stmt = db()->prepare('UPDATE users SET username = ?, email = ?, role = ? WHERE id = ?');
+                        $stmt->execute([$username, $email, $role, $id]);
                     }
+                    saveAnalystSections($id, $sectionSlugs);
                     header('Location: /users.php');
                     exit;
                 } catch (PDOException $e) {
@@ -82,12 +101,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (isset($_GET['edit'])) {
-    $stmt = db()->prepare('SELECT id, username, email, is_admin FROM users WHERE id = ?');
+    $stmt = db()->prepare('SELECT id, username, email, role FROM users WHERE id = ?');
     $stmt->execute([(int) $_GET['edit']]);
     $editUser = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($editUser) {
+        $stmt = db()->prepare('SELECT section_slug FROM analyst_sections WHERE user_id = ?');
+        $stmt->execute([$editUser['id']]);
+        $editSections = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'section_slug');
+    }
 }
 
-$users = db()->query('SELECT id, username, email, password_hash, is_admin FROM users ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
+$users = db()->query(
+    "SELECT u.id, u.username, u.email, u.password_hash, u.role,
+            GROUP_CONCAT(a.section_slug ORDER BY a.section_slug SEPARATOR ', ') AS sections
+     FROM users u
+     LEFT JOIN analyst_sections a ON a.user_id = u.id
+     GROUP BY u.id
+     ORDER BY u.id"
+)->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -96,6 +127,12 @@ $users = db()->query('SELECT id, username, email, password_hash, is_admin FROM u
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Management</title>
     <link rel="stylesheet" href="/css/style.css">
+    <script>
+        function toggleSections() {
+            var role = document.getElementById('roleSelect').value;
+            document.getElementById('sectionsField').style.display = role === 'analyst' ? 'block' : 'none';
+        }
+    </script>
 </head>
 <body>
     <header>
@@ -131,9 +168,22 @@ $users = db()->query('SELECT id, username, email, password_hash, is_admin FROM u
                     <input type="password" name="password" <?= $editUser ? '' : 'required' ?>>
                 </label>
                 <label>
-                    <input type="checkbox" name="is_admin" <?= !empty($editUser['is_admin']) ? 'checked' : '' ?>>
-                    Admin
+                    Role
+                    <select id="roleSelect" name="role" onchange="toggleSections()">
+                        <?php foreach ($validRoles as $r): ?>
+                        <option value="<?= $r ?>" <?= ($editUser['role'] ?? 'viewer') === $r ? 'selected' : '' ?>><?= ucwords(str_replace('_', ' ', $r)) ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </label>
+                <div id="sectionsField" style="display: <?= ($editUser['role'] ?? '') === 'analyst' ? 'block' : 'none' ?>;">
+                    <label>Sections (analyst only)</label>
+                    <?php foreach ($allSections as $s): ?>
+                    <label>
+                        <input type="checkbox" name="sections[]" value="<?= htmlspecialchars($s['slug']) ?>" <?= in_array($s['slug'], $editSections, true) ? 'checked' : '' ?>>
+                        <?= htmlspecialchars($s['name']) ?>
+                    </label>
+                    <?php endforeach; ?>
+                </div>
                 <button type="submit"><?= $editUser ? 'Save Changes' : 'Add User' ?></button>
                 <?php if ($editUser): ?>
                     <a href="/users.php">Cancel</a>
@@ -149,7 +199,8 @@ $users = db()->query('SELECT id, username, email, password_hash, is_admin FROM u
             <th>Username</th>
             <th>Email</th>
             <th>Password Hash</th>
-            <th>Admin</th>
+            <th>Role</th>
+            <th>Sections</th>
             <th>Actions</th>
         </tr>
         <?php foreach ($users as $u): ?>
@@ -158,7 +209,8 @@ $users = db()->query('SELECT id, username, email, password_hash, is_admin FROM u
             <td><?= htmlspecialchars($u['username']) ?></td>
             <td><?= htmlspecialchars($u['email']) ?></td>
             <td><?= htmlspecialchars($u['password_hash']) ?></td>
-            <td><?= $u['is_admin'] ? 'Yes' : 'No' ?></td>
+            <td><?= htmlspecialchars(ucwords(str_replace('_', ' ', $u['role']))) ?></td>
+            <td><?= $u['sections'] ? htmlspecialchars($u['sections']) : ($u['role'] === 'super_admin' ? 'all' : '&mdash;') ?></td>
             <td>
                 <a href="/users.php?edit=<?= (int) $u['id'] ?>">Edit</a>
                 <form class="inline" method="POST" action="/users.php" onsubmit="return confirm('Delete user &quot;<?= htmlspecialchars($u['username'], ENT_QUOTES) ?>&quot;? This cannot be undone.');">

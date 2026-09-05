@@ -35,11 +35,36 @@ function requireLogin() {
     }
 }
 
-function requireAdmin() {
+function requireRole($roles) {
     requireLogin();
-    if (!currentUser()['is_admin']) {
+    $roles = (array) $roles;
+    if (!in_array(currentUser()['role'], $roles, true)) {
         http_response_code(403);
-        echo 'Forbidden: admin access only.';
+        require __DIR__ . '/../403.php';
+        exit;
+    }
+}
+
+// All section slugs a user can access. super_admin implicitly gets every
+// section; analysts get whatever's in analyst_sections; viewers get none
+// (their access is limited to saved reports, not live section pages).
+function userSections($user) {
+    if ($user['role'] === 'super_admin') {
+        return array_column(db()->query('SELECT slug FROM sections')->fetchAll(PDO::FETCH_ASSOC), 'slug');
+    }
+    if ($user['role'] === 'analyst') {
+        $stmt = db()->prepare('SELECT section_slug FROM analyst_sections WHERE user_id = ?');
+        $stmt->execute([$user['id']]);
+        return array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'section_slug');
+    }
+    return [];
+}
+
+function requireSection($slug) {
+    requireLogin();
+    if (!in_array($slug, userSections(currentUser()), true)) {
+        http_response_code(403);
+        require __DIR__ . '/../403.php';
         exit;
     }
 }

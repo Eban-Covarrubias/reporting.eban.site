@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/lib/auth.php';
-requireLogin();
+requireSection('performance');
 $user = currentUser();
 
 // Break the total load time down into the actual Navigation Timing phases,

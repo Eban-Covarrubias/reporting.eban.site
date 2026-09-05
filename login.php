@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'id' => $user['id'],
             'username' => $user['username'],
             'email' => $user['email'],
-            'is_admin' => (bool) $user['is_admin'],
+            'role' => $user['role'],
         ];
         header('Location: /index.php');
         exit;

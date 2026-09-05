@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/lib/auth.php';
-requireLogin();
+requireSection('errors');
 $user = currentUser();
 
 // Break errors down by the exact message/line, not just page-level counts,

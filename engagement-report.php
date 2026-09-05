@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/lib/auth.php';
-requireLogin();
+requireSection('engagement');
 $user = currentUser();
 
 // Bucket each paired page_enter/page_leave visit by how much *active* time
