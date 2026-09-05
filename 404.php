@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+    <?php include __DIR__ . '/partials/theme.php'; ?>
     <header>
         <h1>404 &mdash; Not Found</h1>
         <p>That page doesn't exist.</p>

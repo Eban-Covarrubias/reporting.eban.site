@@ -40,6 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+    <?php include __DIR__ . '/partials/theme.php'; ?>
     <header>
         <h1>reporting.eban.site</h1>
         <p>Sign in to view your dashboard</p>

@@ -8,8 +8,42 @@
   --danger: #ff6b6b;
 }
 
+:root[data-theme="light"] {
+  --bg: #f7f8fa;
+  --panel: #ffffff;
+  --text: #14161a;
+  --muted: #5b6270;
+  --accent: #1a73e8;
+  --border: #dde1e6;
+  --danger: #c62828;
+}
+
 * {
   box-sizing: border-box;
+}
+
+.theme-toggle {
+  position: fixed;
+  top: 1rem;
+  right: 1.5rem;
+  z-index: 50;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.theme-toggle:hover {
+  opacity: 0.85;
 }
 
 body {

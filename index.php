@@ -135,6 +135,7 @@ if ($hasEngagement) {
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-error-bars@4"></script>
 </head>
 <body>
+    <?php include __DIR__ . '/partials/theme.php'; ?>
     <header>
         <h1>reporting.eban.site</h1>
         <p>Logged in as <?= htmlspecialchars($user['username']) ?> (<?= htmlspecialchars(ucwords(str_replace('_', ' ', $user['role']))) ?>)</p>

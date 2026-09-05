@@ -124,6 +124,7 @@ $users = db()->query(
     </script>
 </head>
 <body>
+    <?php include __DIR__ . '/partials/theme.php'; ?>
     <header>
         <h1>User Management</h1>
         <nav>

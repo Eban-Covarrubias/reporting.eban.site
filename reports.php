@@ -43,6 +43,7 @@ if ($user['role'] === 'viewer') {
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+    <?php include __DIR__ . '/partials/theme.php'; ?>
     <header>
         <h1>Saved Reports</h1>
         <nav>

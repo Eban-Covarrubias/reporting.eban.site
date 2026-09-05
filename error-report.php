@@ -37,6 +37,9 @@ if ($isDownload) {
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 </head>
 <body>
+    <?php if (!$isDownload): ?>
+    <?php include __DIR__ . '/partials/theme.php'; ?>
+    <?php endif; ?>
     <header>
         <h1>Detailed Report: Which Bugs Are Breaking Which Pages?</h1>
         <?php if (!$isDownload): ?>

@@ -102,7 +102,7 @@ function renderBarRows(array $rows, string $labelKey, array $series): string {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en"<?= $isPdf ? ' data-theme="light"' : '' ?>>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -113,6 +113,9 @@ function renderBarRows(array $rows, string $labelKey, array $series): string {
     <?php endif; ?>
 </head>
 <body>
+    <?php if (!$isPdf): ?>
+    <?php include __DIR__ . '/partials/theme.php'; ?>
+    <?php endif; ?>
     <header>
         <h1><?= htmlspecialchars($report['title']) ?></h1>
         <p class="muted">
