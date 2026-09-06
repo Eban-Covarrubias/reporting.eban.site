@@ -9,15 +9,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
         $error = 'Invalid form submission, please try again.';
     } else {
         $deleteId = (int) ($_POST['id'] ?? 0);
-        $stmt = db()->prepare('SELECT section FROM reports WHERE id = ?');
+        $stmt = db()->prepare('SELECT section, is_example FROM reports WHERE id = ?');
         $stmt->execute([$deleteId]);
-        $reportSection = $stmt->fetchColumn();
+        $target = $stmt->fetch(PDO::FETCH_ASSOC);
 
         // Same rule as editing a report on report.php: viewers can never
         // delete, everyone else only within their own assigned sections.
-        $canDelete = $reportSection !== false
+        // Example reports are never deletable, regardless of role, so
+        // there's always a reference report to look at per section.
+        $canDelete = $target
+            && !$target['is_example']
             && $user['role'] !== 'viewer'
-            && in_array($reportSection, userSections($user), true);
+            && in_array($target['section'], userSections($user), true);
 
         if ($canDelete) {
             $stmt = db()->prepare('DELETE FROM reports WHERE id = ?');
@@ -25,7 +28,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
             header('Location: /reports.php');
             exit;
         }
-        $error = 'You do not have permission to delete that report.';
+        $error = $target && $target['is_example']
+            ? 'Example reports can\'t be deleted.'
+            : 'You do not have permission to delete that report.';
     }
 }
 
@@ -42,7 +47,7 @@ foreach (db()->query('SELECT slug, name FROM sections')->fetchAll(PDO::FETCH_ASS
 // to the sections they can see live.
 if ($user['role'] === 'viewer') {
     $reports = db()->query(
-        "SELECT r.id, r.title, r.section, r.created_at, u.username AS created_by
+        "SELECT r.id, r.title, r.section, r.is_example, r.created_at, u.username AS created_by
          FROM reports r JOIN users u ON u.id = r.created_by
          ORDER BY r.created_at DESC"
     )->fetchAll(PDO::FETCH_ASSOC);
@@ -53,7 +58,7 @@ if ($user['role'] === 'viewer') {
     } else {
         $placeholders = implode(',', array_fill(0, count($sections), '?'));
         $stmt = db()->prepare(
-            "SELECT r.id, r.title, r.section, r.created_at, u.username AS created_by
+            "SELECT r.id, r.title, r.section, r.is_example, r.created_at, u.username AS created_by
              FROM reports r JOIN users u ON u.id = r.created_by
              WHERE r.section IN ($placeholders)
              ORDER BY r.created_at DESC"
@@ -99,9 +104,12 @@ if ($user['role'] === 'viewer') {
                 <th>Actions</th>
             </tr>
             <?php foreach ($reports as $r): ?>
-            <?php $canDeleteRow = $user['role'] !== 'viewer' && in_array($r['section'], $userSections, true); ?>
+            <?php $canDeleteRow = !$r['is_example'] && $user['role'] !== 'viewer' && in_array($r['section'], $userSections, true); ?>
             <tr>
-                <td><a href="/report.php?id=<?= (int) $r['id'] ?>"><?= htmlspecialchars($r['title']) ?></a></td>
+                <td>
+                    <a href="/report.php?id=<?= (int) $r['id'] ?>"><?= htmlspecialchars($r['title']) ?></a>
+                    <?php if ($r['is_example']): ?> <span class="muted">(example)</span><?php endif; ?>
+                </td>
                 <td><?= htmlspecialchars($sectionNames[$r['section']] ?? $r['section']) ?></td>
                 <td><?= htmlspecialchars($r['created_by']) ?></td>
                 <td><?= htmlspecialchars($r['created_at']) ?></td>
