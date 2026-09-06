@@ -49,31 +49,26 @@ if ($isDownload) {
             <a href="/error-report.php?download=1">Download Report</a>
             <a href="/logout.php">Logout</a>
         </nav>
-        <form method="POST" action="/save-report.php" style="margin-top: 1rem; max-width: 640px;">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
-            <input type="hidden" name="section" value="errors">
-            <input type="hidden" name="snapshot" value='<?= htmlspecialchars(json_encode($errorDetails), ENT_QUOTES) ?>'>
-            <label>
-                Report Title
-                <input type="text" name="title" required>
-            </label>
+        <?php endif; ?>
+    </header>
+    <main>
+    <?php if (!$isDownload): ?>
+    <form method="POST" action="/save-report.php">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+        <input type="hidden" name="section" value="errors">
+        <input type="hidden" name="snapshot" value='<?= htmlspecialchars(json_encode($errorDetails), ENT_QUOTES) ?>'>
+        <div class="report-title-bar">
+            <input type="text" name="title" placeholder="Report Title" aria-label="Report Title" required>
+            <button type="submit">Save as Report</button>
+        </div>
+        <div class="report-field">
             <label>
                 Guiding Question <span class="muted">(optional)</span>
                 <textarea name="guiding_question" rows="2"></textarea>
             </label>
-            <label>
-                What This Tells Us <span class="muted">(optional)</span>
-                <textarea name="what_this_tells_us" rows="4"></textarea>
-            </label>
-            <label>
-                Additional Notes <span class="muted">(optional)</span>
-                <textarea name="additional_notes" rows="3"></textarea>
-            </label>
-            <button type="submit">Save as Report</button>
-        </form>
-        <?php endif; ?>
-    </header>
-    <main>
+        </div>
+    <?php endif; ?>
+
     <section>
     <h2>Distinct Errors by Page</h2>
     <table>
@@ -105,6 +100,23 @@ if ($isDownload) {
         <noscript><p class="muted">This chart requires JavaScript; see the table above for the same data.</p></noscript>
     </div>
     </section>
+
+    <?php if (!$isDownload): ?>
+        <div class="report-field">
+            <label>
+                What This Tells Us <span class="muted">(optional)</span>
+                <textarea name="what_this_tells_us" rows="4"></textarea>
+            </label>
+        </div>
+        <div class="report-field">
+            <label>
+                Additional Notes <span class="muted">(optional)</span>
+                <textarea name="additional_notes" rows="3"></textarea>
+            </label>
+        </div>
+    </form>
+    <?php endif; ?>
+    </main>
 
     <script>
         const errorDetails = <?= json_encode($errorDetails) ?>;

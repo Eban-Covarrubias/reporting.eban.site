@@ -46,6 +46,33 @@
   opacity: 0.85;
 }
 
+.report-title-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+  margin: 0 auto 2rem;
+  max-width: 480px;
+}
+
+.report-title-bar h1 {
+  margin: 0;
+}
+
+.report-title-bar input[type="text"] {
+  width: auto;
+  min-width: 280px;
+  max-width: 480px;
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+.report-field {
+  max-width: 640px;
+  margin: 0 auto 2rem;
+}
+
 body {
   margin: 0;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;

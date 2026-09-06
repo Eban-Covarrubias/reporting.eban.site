@@ -127,14 +127,8 @@ function renderBarRows(array $rows, string $labelKey, array $series): string {
     <?php if (!$isPdf): ?>
     <?php include __DIR__ . '/partials/theme.php'; ?>
     <?php endif; ?>
+    <?php if (!$isPdf): ?>
     <header>
-        <h1><?= htmlspecialchars($report['title']) ?></h1>
-        <p class="muted">
-            Section: <?= htmlspecialchars($sectionNames[$report['section']] ?? $report['section']) ?>
-            &middot; Saved by <?= htmlspecialchars($report['created_by_username']) ?>
-            on <?= htmlspecialchars($report['created_at']) ?>
-        </p>
-        <?php if (!$isPdf): ?>
         <nav>
             <a href="/reports.php">Back to Saved Reports</a>
             <?php if ($user['role'] !== 'viewer'): ?>
@@ -143,11 +137,36 @@ function renderBarRows(array $rows, string $labelKey, array $series): string {
             <a href="/export-report.php?id=<?= (int) $id ?>">Download PDF</a>
             <a href="/logout.php">Logout</a>
         </nav>
-        <?php endif; ?>
     </header>
+    <?php endif; ?>
     <main>
+        <div class="report-title-bar">
+            <h1><?= htmlspecialchars($report['title']) ?></h1>
+            <p class="muted">
+                Section: <?= htmlspecialchars($sectionNames[$report['section']] ?? $report['section']) ?>
+                &middot; Saved by <?= htmlspecialchars($report['created_by_username']) ?>
+                on <?= htmlspecialchars($report['created_at']) ?>
+            </p>
+        </div>
+
         <?php if ($error): ?>
             <p class="error"><?= htmlspecialchars($error) ?></p>
+        <?php endif; ?>
+
+        <?php if ($showEditForm): ?>
+        <form method="POST" action="/report.php?id=<?= (int) $id ?>">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+            <div class="report-field">
+                <label>
+                    Guiding Question <span class="muted">(optional)</span>
+                    <textarea name="guiding_question" rows="2"><?= htmlspecialchars($report['guiding_question'] ?? '') ?></textarea>
+                </label>
+            </div>
+        <?php elseif ($report['guiding_question']): ?>
+        <section>
+        <h2>Guiding Question</h2>
+        <p><?= nl2br(htmlspecialchars($report['guiding_question'])) ?></p>
+        </section>
         <?php endif; ?>
 
         <?php if ($report['section'] === 'performance'): ?>
@@ -262,32 +281,23 @@ function renderBarRows(array $rows, string $labelKey, array $series): string {
         <?php endif; ?>
 
         <?php if ($showEditForm): ?>
-        <section>
-        <h2>Write-Up</h2>
-        <form method="POST" action="/report.php?id=<?= (int) $id ?>" style="max-width: 640px;">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
-            <label>
-                Guiding Question <span class="muted">(optional)</span>
-                <textarea name="guiding_question" rows="2"><?= htmlspecialchars($report['guiding_question'] ?? '') ?></textarea>
-            </label>
-            <label>
-                What This Tells Us <span class="muted">(optional)</span>
-                <textarea name="what_this_tells_us" rows="4"><?= htmlspecialchars($report['what_this_tells_us'] ?? '') ?></textarea>
-            </label>
-            <label>
-                Additional Notes <span class="muted">(optional)</span>
-                <textarea name="additional_notes" rows="3"><?= htmlspecialchars($report['additional_notes'] ?? '') ?></textarea>
-            </label>
-            <button type="submit">Save</button>
+            <div class="report-field">
+                <label>
+                    What This Tells Us <span class="muted">(optional)</span>
+                    <textarea name="what_this_tells_us" rows="4"><?= htmlspecialchars($report['what_this_tells_us'] ?? '') ?></textarea>
+                </label>
+            </div>
+            <div class="report-field">
+                <label>
+                    Additional Notes <span class="muted">(optional)</span>
+                    <textarea name="additional_notes" rows="3"><?= htmlspecialchars($report['additional_notes'] ?? '') ?></textarea>
+                </label>
+            </div>
+            <div class="report-field" style="text-align: center;">
+                <button type="submit">Save</button>
+            </div>
         </form>
-        </section>
         <?php else: ?>
-            <?php if ($report['guiding_question']): ?>
-            <section>
-            <h2>Guiding Question</h2>
-            <p><?= nl2br(htmlspecialchars($report['guiding_question'])) ?></p>
-            </section>
-            <?php endif; ?>
             <?php if ($report['what_this_tells_us']): ?>
             <section>
             <h2>What This Tells Us</h2>
