@@ -154,7 +154,7 @@ function renderBarRows(array $rows, string $labelKey, array $series): string {
         <?php endif; ?>
 
         <?php if ($showEditForm): ?>
-        <form method="POST" action="/report.php?id=<?= (int) $id ?>">
+        <form method="POST" action="/report.php?id=<?= (int) $id ?>" class="report-form">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
             <div class="report-field">
                 <label>

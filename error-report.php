@@ -53,7 +53,7 @@ if ($isDownload) {
     </header>
     <main>
     <?php if (!$isDownload): ?>
-    <form method="POST" action="/save-report.php">
+    <form method="POST" action="/save-report.php" class="report-form">
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
         <input type="hidden" name="section" value="errors">
         <input type="hidden" name="snapshot" value='<?= htmlspecialchars(json_encode($errorDetails), ENT_QUOTES) ?>'>
