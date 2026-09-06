@@ -122,6 +122,8 @@ function renderBarRows(array $rows, string $labelKey, array $series): string {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($report['title']) ?></title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="alternate icon" href="/favicon.ico">
     <link rel="stylesheet" href="/css/style.css">
     <?php if (!$isPdf): ?>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
