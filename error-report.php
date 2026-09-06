@@ -46,7 +46,7 @@ if ($isDownload) {
         <nav>
             <a href="/index.php">Back to dashboard</a>
             <a href="/reports.php">Saved Reports</a>
-            <a href="/error-report.php?download=1">Download Report</a>
+            <a href="/error-report.php?download=1">Download Raw Data Report</a>
             <a href="/logout.php">Logout</a>
         </nav>
         <?php endif; ?>
