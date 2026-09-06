@@ -26,7 +26,11 @@ if (!$canView) {
     require __DIR__ . '/403.php';
     exit;
 }
-$canEdit = $user['role'] !== 'viewer' && in_array($report['section'], userSections($user), true);
+// Example reports are read-only for everyone, including super_admin - they're
+// meant to stay as a fixed reference, same reasoning as blocking their deletion.
+$canEdit = !$report['is_example']
+    && $user['role'] !== 'viewer'
+    && in_array($report['section'], userSections($user), true);
 
 $error = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -151,6 +155,10 @@ function renderBarRows(array $rows, string $labelKey, array $series): string {
 
         <?php if ($error): ?>
             <p class="error"><?= htmlspecialchars($error) ?></p>
+        <?php endif; ?>
+
+        <?php if ($report['is_example'] && !$isPdf): ?>
+            <p class="muted">This is a seeded example report and is read-only (can't be edited or deleted).</p>
         <?php endif; ?>
 
         <?php if ($showEditForm): ?>
